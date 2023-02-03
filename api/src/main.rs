@@ -30,7 +30,7 @@ async fn main() {
 
             let project = request.uri.path().split('/').nth(1).unwrap();
 
-            if project == "hop" && origin == "https://docs.hop.io" {
+            if project == "hop" && origin == "https://clippy-widget.vercel.app" {
                 return true;
             }
 
