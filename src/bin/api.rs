@@ -7,7 +7,10 @@ use axum::{
 };
 use dotenvy::dotenv;
 use serde_json::Value;
-use tower_http::cors::{AllowOrigin, Any, CorsLayer};
+use tower_http::{
+    cors::{AllowOrigin, Any, CorsLayer},
+    trace::TraceLayer,
+};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use ::clippy::{build_prompt, OpenAI, Qdrant};
@@ -24,6 +27,7 @@ async fn main() {
         .init();
 
     let cors = CorsLayer::new()
+        .allow_headers(Any)
         .allow_origin(AllowOrigin::predicate(
             |origin: &HeaderValue, request: &request::Parts| {
                 if request.uri == "/" || origin == "http://localhost:3000" {
@@ -42,13 +46,13 @@ async fn main() {
 
                 false
             },
-        ))
-        .allow_headers(Any);
+        ));
 
     let app = Router::new()
         .route("/", get(|| async {}))
         .route("/:project/query", post(ask))
-        .layer(cors);
+        .layer(cors)
+        .layer(TraceLayer::new_for_http());
 
     let addr = "0.0.0.0:3000".parse().unwrap();
     tracing::info!("Listening on {}", addr);
