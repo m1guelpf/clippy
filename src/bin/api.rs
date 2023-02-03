@@ -7,24 +7,13 @@ use axum::{
 };
 use dotenvy::dotenv;
 use serde_json::Value;
-use tower_http::{
-    cors::{AllowOrigin, Any, CorsLayer},
-    trace::TraceLayer,
-};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use tower_http::cors::{AllowOrigin, CorsLayer};
 
 use ::clippy::{build_prompt, OpenAI, Qdrant};
 
 #[tokio::main]
 async fn main() {
     dotenv().ok();
-
-    tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::new(
-            std::env::var("RUST_LOG").unwrap_or_else(|_| "axum_api=debug".into()),
-        ))
-        .with(tracing_subscriber::fmt::layer())
-        .init();
 
     let cors = CorsLayer::permissive().allow_origin(AllowOrigin::predicate(
         |origin: &HeaderValue, request: &request::Parts| {
@@ -49,12 +38,11 @@ async fn main() {
     let app = Router::new()
         .route("/", get(|| async {}))
         .route("/:project/query", post(ask))
-        .layer(cors)
-        .layer(TraceLayer::new_for_http());
+        .layer(cors);
 
     let addr = "0.0.0.0:3000".parse().unwrap();
-    tracing::info!("Listening on {}", addr);
 
+    println!("Listening on {addr}");
     Server::bind(&addr)
         .serve(app.into_make_service())
         .await
