@@ -1,5 +1,5 @@
 use axum::{
-    extract::{FromRequestParts, Path},
+    extract::Path,
     http::{request, HeaderValue},
     response::IntoResponse,
     routing::{get, post},
@@ -7,7 +7,7 @@ use axum::{
 };
 use dotenvy::dotenv;
 use serde_json::Value;
-use tower_http::cors::{AllowOrigin, CorsLayer};
+use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use ::clippy::{build_prompt, OpenAI, Qdrant};
@@ -23,25 +23,27 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let cors = CorsLayer::new().allow_origin(AllowOrigin::predicate(
-        |origin: &HeaderValue, request: &request::Parts| {
-            if request.uri == "/" || origin == "http://localhost:3000" {
-                return true;
-            }
+    let cors = CorsLayer::new()
+        .allow_origin(AllowOrigin::predicate(
+            |origin: &HeaderValue, request: &request::Parts| {
+                if request.uri == "/" || origin == "http://localhost:3000" {
+                    return true;
+                }
 
-            if !request.uri.path().ends_with("/query") {
-                return false;
-            }
+                if !request.uri.path().ends_with("/query") {
+                    return false;
+                }
 
-            let project = request.uri.path().split('/').nth(1).unwrap();
+                let project = request.uri.path().split('/').nth(1).unwrap();
 
-            if project == "hop" && origin == "https://docs.hop.io" {
-                return true;
-            }
+                if project == "hop" && origin == "https://docs.hop.io" {
+                    return true;
+                }
 
-            false
-        },
-    ));
+                false
+            },
+        ))
+        .allow_headers(Any);
 
     let app = Router::new()
         .route("/", get(|| async {}))
