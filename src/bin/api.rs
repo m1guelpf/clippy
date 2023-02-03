@@ -26,27 +26,25 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let cors = CorsLayer::new()
-        .allow_headers(Any)
-        .allow_origin(AllowOrigin::predicate(
-            |origin: &HeaderValue, request: &request::Parts| {
-                if request.uri == "/" || origin == "http://localhost:3000" {
-                    return true;
-                }
+    let cors = CorsLayer::permissive().allow_origin(AllowOrigin::predicate(
+        |origin: &HeaderValue, request: &request::Parts| {
+            if request.uri == "/" || origin == "http://localhost:3000" {
+                return true;
+            }
 
-                if !request.uri.path().ends_with("/query") {
-                    return false;
-                }
+            if !request.uri.path().ends_with("/query") {
+                return false;
+            }
 
-                let project = request.uri.path().split('/').nth(1).unwrap();
+            let project = request.uri.path().split('/').nth(1).unwrap();
 
-                if project == "hop" && origin == "https://docs.hop.io" {
-                    return true;
-                }
+            if project == "hop" && origin == "https://docs.hop.io" {
+                return true;
+            }
 
-                false
-            },
-        ));
+            false
+        },
+    ));
 
     let app = Router::new()
         .route("/", get(|| async {}))
@@ -56,6 +54,7 @@ async fn main() {
 
     let addr = "0.0.0.0:3000".parse().unwrap();
     tracing::info!("Listening on {}", addr);
+
     Server::bind(&addr)
         .serve(app.into_make_service())
         .await
