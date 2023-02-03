@@ -66,6 +66,7 @@ async fn ask(Path(project): Path<String>, Json(req): Json<AskRequest>) -> impl I
             client
                 .prompt(&build_prompt(&req.query, &results))
                 .await
+                .map_err(|e| format!("OpenAI error: {e}"))
                 .unwrap(),
         )
         .unwrap(),
