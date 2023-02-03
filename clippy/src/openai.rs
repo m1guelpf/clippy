@@ -120,8 +120,8 @@ impl OpenAI {
     pub async fn prompt(&self, prompt: &str) -> Result<Answer> {
         let request = CreateCompletionRequestArgs::default()
             .model("text-davinci-003")
-            .temperature(0.8)
-            .max_tokens(700_u16)
+            .temperature(0.5)
+            .max_tokens(400_u16)
             .prompt(prompt)
             .build()?;
 
