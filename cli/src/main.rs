@@ -1,3 +1,5 @@
+#![warn(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use std::{
     fs::{self, DirEntry},
     io::Cursor,

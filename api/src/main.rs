@@ -1,3 +1,5 @@
+#![warn(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use axum::{
     extract::Path,
     http::{request, HeaderValue},
@@ -6,10 +8,11 @@ use axum::{
     Json, Router, Server,
 };
 use dotenvy::dotenv;
-use serde_json::Value;
+use map_macro::map;
+use serde_json::json;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 
-use ::clippy::{build_prompt, OpenAI, Qdrant};
+use ::clippy::{build_prompt, search_project, OpenAI};
 
 #[tokio::main]
 async fn main() {
@@ -21,7 +24,7 @@ async fn main() {
                 return true;
             }
 
-            if !request.uri.path().ends_with("/query") {
+            if !request.uri.path().ends_with("/query") && !request.uri.path().ends_with("/search") {
                 return false;
             }
 
@@ -38,6 +41,7 @@ async fn main() {
     let app = Router::new()
         .route("/", get(|| async {}))
         .route("/:project/query", post(ask))
+        .route("/:project/search", post(search))
         .layer(cors);
 
     let addr = "0.0.0.0:3000".parse().unwrap();
@@ -54,21 +58,53 @@ struct AskRequest {
     query: String,
 }
 
-async fn ask(Path(project): Path<String>, Json(req): Json<AskRequest>) -> impl IntoResponse {
-    let client = OpenAI::new();
-    let qdrant = Qdrant::new().collection(&format!("docs_{project}"));
+async fn search(Path(project): Path<String>, Json(req): Json<AskRequest>) -> impl IntoResponse {
+    let results = search_project(&project, &req.query).await.unwrap();
 
-    let query_points = client.raw_embed(&req.query).await.unwrap();
-    let results = qdrant.query(query_points).await.unwrap();
-
-    Json::<Value>(
+    Json(
         serde_json::to_value(
-            client
-                .prompt(&build_prompt(&req.query, &results))
-                .await
-                .map_err(|e| format!("OpenAI error: {e}"))
-                .unwrap(),
+            results
+                .into_iter()
+                .map(|r| {
+                    map! {
+                        "path" => r.payload.path,
+                        "text" => r.payload.text,
+                        "title" => r.payload.title,
+                        "page" => r.payload.page_title,
+                    }
+                })
+                .collect::<Vec<_>>(),
         )
         .unwrap(),
     )
+}
+
+async fn ask(Path(project): Path<String>, Json(req): Json<AskRequest>) -> impl IntoResponse {
+    let client = OpenAI::new();
+    let results = search_project(&project, &req.query).await.unwrap();
+
+    let answer = client
+        .prompt(&build_prompt(&req.query, &results))
+        .await
+        .unwrap();
+
+    let mut results = results.into_iter();
+
+    Json(json!({
+        "answer": answer.answer,
+        "sources": answer
+        .sources
+        .into_iter()
+        .map(|path| {
+            results
+                .find(|r| r.payload.path == path)
+                .map(|r| map! {
+                    "path" => r.payload.path,
+                    "title" => r.payload.title,
+                    "page" => r.payload.page_title,
+                })
+                .unwrap()
+        })
+        .collect::<Vec<_>>(),
+    }))
 }

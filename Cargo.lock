@@ -21,6 +21,7 @@ dependencies = [
  "axum",
  "clippy",
  "dotenvy",
+ "map-macro",
  "serde",
  "serde_json",
  "tokio",
