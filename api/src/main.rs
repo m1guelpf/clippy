@@ -103,7 +103,6 @@ async fn ask(Path(project): Path<String>, Json(req): Json<AskRequest>) -> impl I
                     "title" => r.payload.title,
                     "page" => r.payload.page_title,
                 })
-                .unwrap()
         })
         .collect::<Vec<_>>(),
     }))
