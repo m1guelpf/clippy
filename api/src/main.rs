@@ -3,16 +3,20 @@
 use axum::{
     extract::Path,
     http::{request, HeaderValue},
+    response::sse::{Event, KeepAlive, Sse},
     response::IntoResponse,
     routing::{get, post},
     Json, Router, Server,
 };
 use dotenvy::dotenv;
+use futures::stream::Stream;
 use map_macro::map;
-use serde_json::json;
+use serde_json::{json, Value};
+use std::convert::Infallible;
+use tokio_stream::StreamExt as _;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 
-use ::clippy::{build_prompt, search_project, OpenAI};
+use ::clippy::{build_prompt, search_project, stream::PartialResult, OpenAI};
 
 #[tokio::main]
 async fn main() {
@@ -42,6 +46,7 @@ async fn main() {
         .route("/", get(|| async {}))
         .route("/:project/query", post(ask))
         .route("/:project/search", post(search))
+        .route("/:project/stream", post(stream))
         .layer(cors);
 
     let addr = "0.0.0.0:3000".parse().unwrap();
@@ -106,4 +111,48 @@ async fn ask(Path(project): Path<String>, Json(req): Json<AskRequest>) -> impl I
         })
         .collect::<Vec<_>>(),
     }))
+}
+
+#[allow(clippy::unused_async)]
+async fn stream(
+    Path(project): Path<String>,
+    Json(req): Json<AskRequest>,
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    let stream = clippy::stream::ask(project, req.query);
+
+    let stream = stream.map(|e| {
+        let Ok(event) = e else {
+            return Ok::<_, Infallible>(Event::default().id("error").json_data(json!({
+                "error": "Failed to complete query."
+            })).unwrap())
+        };
+
+        match event {
+            PartialResult::References(results) => {
+                let results = results
+                    .into_iter()
+                    .map(|p| {
+                        json!({
+                            "path": p.path,
+                            "text": p.text,
+                            "title": p.title,
+                            "page": p.page_title,
+                        })
+                    })
+                    .collect::<Vec<Value>>();
+
+                Ok::<_, Infallible>(
+                    Event::default()
+                        .id("references")
+                        .json_data(results)
+                        .unwrap(),
+                )
+            }
+            PartialResult::Answer(answer) => {
+                Ok::<_, Infallible>(Event::default().id("answer").json_data(answer).unwrap())
+            }
+        }
+    });
+
+    Sse::new(stream).keep_alive(KeepAlive::default())
 }

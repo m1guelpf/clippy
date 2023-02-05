@@ -4,6 +4,7 @@ mod langchain;
 mod openai;
 mod parser;
 mod qdrant;
+pub mod stream;
 
 pub use langchain::build_prompt;
 pub use openai::OpenAI;

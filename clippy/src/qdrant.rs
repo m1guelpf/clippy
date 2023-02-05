@@ -73,7 +73,7 @@ pub struct PointStruct {
     pub payload: Payload,
 }
 
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct PointResult {
     id: String,
     score: f32,

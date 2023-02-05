@@ -21,11 +21,23 @@ dependencies = [
  "axum",
  "clippy",
  "dotenvy",
+ "futures",
  "map-macro",
  "serde",
  "serde_json",
  "tokio",
+ "tokio-stream",
  "tower-http",
+]
+
+[[package]]
+name = "async-fn-stream"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d5f39746cfb8c7686cc5da3be489d066b2dee606e6e0daec64e59657f016be7"
+dependencies = [
+ "futures",
+ "pin-project-lite",
 ]
 
 [[package]]
@@ -256,6 +268,7 @@ name = "clippy"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-fn-stream",
  "async-openai",
  "backoff",
  "futures",
