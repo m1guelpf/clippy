@@ -7,7 +7,7 @@ use std::{
     process,
 };
 
-use ::clippy::{build_prompt, into_document, Document, OpenAI, Qdrant};
+use ::clippy::{build_prompt, into_document, search_project, Document, OpenAI, Qdrant};
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -117,11 +117,9 @@ async fn main() {
                 process::exit(1);
             }
 
-            let client = OpenAI::new();
-            let qdrant = Qdrant::new().collection(&format!("docs_{slug}"));
-
-            let query = client.raw_embed(&query).await.unwrap();
-            let results = qdrant.query(query).await.unwrap();
+            let results = search_project(&format!("docs_{slug}"), &query)
+                .await
+                .unwrap();
 
             dbg!(results);
         }

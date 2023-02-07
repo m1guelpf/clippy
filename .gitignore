@@ -1,3 +1,4 @@
 /target
-/build
+/cli/build
 .env
+/api/src/prisma.rs

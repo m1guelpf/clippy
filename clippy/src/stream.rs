@@ -33,7 +33,7 @@ pub fn ask(
         let client = OpenAI::new();
         let query_points = client.raw_embed(&query).await?;
 
-        let qdrant = Qdrant::new().collection(&format!("docs_{project_id}"));
+        let qdrant = Qdrant::new().collection(&project_id);
         let results = qdrant.query(query_points).await?;
         emitter.emit((&results).into()).await;
 

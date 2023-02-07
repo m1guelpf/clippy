@@ -1,0 +1,48 @@
+datasource db {
+    provider = "mysql"
+    url      = env("DATABASE_URL")
+}
+
+generator client {
+    provider = "cargo prisma"
+    output   = "../src/prisma.rs"
+}
+
+model User {
+    id          String @id
+    email       String @unique
+    displayName String
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    teams Team[]
+}
+
+model Team {
+    id   String @id
+    name String
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    members  User[]
+    projects Project[]
+}
+
+model Project {
+    id        String @id
+    teamId    String
+    indexName String
+
+    name     String
+    imageUrl String?
+    copy     Json
+
+    origins Json @default("[]")
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+}

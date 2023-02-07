@@ -28,7 +28,7 @@ impl Qdrant {
     /// This function will panic if the Qdrant API returns an error.
     pub async fn create_collection(&self, name: &str) -> Result<()> {
         self.client
-            .put(&format!("{}/collections/{}", self.base_url, name))
+            .put(&format!("{}/collections/{name}", self.base_url))
             .json(&serde_json::json!({
                 "name": name,
                 "vectors": {
@@ -45,10 +45,7 @@ impl Qdrant {
 
     #[must_use]
     pub fn collection(self, name: &str) -> Collection {
-        Collection::new(
-            self.client,
-            format!("{}/collections/{}", self.base_url, name),
-        )
+        Collection::new(self.client, format!("{}/collections/{name}", self.base_url))
     }
 }
 
