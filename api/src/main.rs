@@ -16,13 +16,10 @@ async fn main() {
     dotenv().ok();
     logger::setup();
 
-    #[cfg(not(debug_assertions))]
-    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-
     let app = app::create().await;
     let address = SocketAddr::from(([0, 0, 0, 0], 3000));
 
-    println!("Server listening on {address}");
+    println!("⚡ Clippy API started on http://{address}");
     Server::bind(&address)
         .serve(app.into_make_service())
         .await

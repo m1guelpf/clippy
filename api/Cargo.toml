@@ -4,9 +4,11 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-url = "2.3.1"
-axum = "0.6.4"
+hex = "0.4.3"
 pika = "0.1.3"
+hmac = "0.12.1"
+sha2 = "0.10.6"
+qstring = "0.7.2"
 anyhow = "1.0.69"
 dotenvy = "0.15.6"
 futures = "0.3.26"
@@ -18,6 +20,7 @@ tokio-stream = "0.1.11"
 axum-derive-error = "0.1.0"
 clippy = { path = "../clippy" }
 tokio = { version = "1.25.0", features = ["full"] }
+axum = { version = "0.6.4", features = ["headers"] }
 serde = { version = "1.0.152", features = ["derive"] }
 tower-http = { version = "0.3.5", features = ["cors", "trace"] }
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
@@ -25,3 +28,6 @@ prisma-client-rust = { git = "https://github.com/Brendonovich/prisma-client-rust
 
 [build-dependencies]
 chrono = "0.4.19"
+
+[dev-dependencies]
+http = "0.2.8"
