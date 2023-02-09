@@ -2,12 +2,20 @@ mod heading;
 
 use anyhow::Result;
 use heading::Heading;
+use lazy_static::lazy_static;
 use map_macro::map;
+use regex::Regex;
 use std::{
     collections::HashMap,
     fs::{self, DirEntry},
 };
 use yaml_front_matter::YamlFrontMatter;
+
+lazy_static! {
+    static ref JSX_COMMENT_RE: Regex = Regex::new(r"\{/\*[\s\S]*?\*/}").unwrap();
+    static ref IMPORT_RE: Regex =
+        Regex::new(r#"import\s+(?:[\{}]?\s*[\w,\s{}]+\s+from\s+)?['"].+?['"];?"#).unwrap();
+}
 
 #[derive(Debug, serde::Deserialize)]
 pub struct FrontMatter {
@@ -45,10 +53,10 @@ impl MarkdownSection {
 
     pub fn append(&mut self, line: &str) {
         if self.content.is_empty() {
-            return self.content.push_str(line);
+            return self.content.push_str(line.trim());
         }
 
-        self.content.push_str(&format!("\n{line}"));
+        self.content.push_str(&format!("\n{}", line.trim()));
     }
 }
 
@@ -119,13 +127,19 @@ impl State {
 pub fn extract_sections(content: &str, metadata: &FrontMatter) -> Vec<MarkdownSection> {
     let mut state = State::with_title(metadata.title.clone());
 
-    for line in content.lines() {
+    for mut line in content.lines().map(ToString::to_string) {
         if line.starts_with("```") {
             state.toggle_code_block();
         }
 
         if !state.is_inside_code_block {
-            let heading = Heading::try_parse(line);
+            if IMPORT_RE.is_match(&line) {
+                continue;
+            }
+
+            line = JSX_COMMENT_RE.replace_all(&line, "").to_string();
+
+            let heading = Heading::try_parse(&line);
 
             if let Some(heading) = heading {
                 let title = state.compute_title(&heading);
@@ -135,7 +149,7 @@ pub fn extract_sections(content: &str, metadata: &FrontMatter) -> Vec<MarkdownSe
             }
         }
 
-        state.push_line(line);
+        state.push_line(&line);
     }
 
     state.get_sections()
@@ -159,13 +173,29 @@ pub struct Document {
 pub fn into_document(file: &DirEntry, base_path: String) -> Result<Document> {
     let content = fs::read_to_string(file.path())?;
 
-    let (metadata, content) = parse_meta(&content).map_err(|err| {
-        anyhow::anyhow!(
-            "Failed to parse front matter for file {}: {}",
-            file.path().display(),
-            err
+    let (metadata, content) = if content.trim().starts_with("---") {
+        parse_meta(&content).map_err(|err| {
+            anyhow::anyhow!(
+                "Failed to parse front matter for file {}: {}",
+                file.path().display(),
+                err
+            )
+        })?
+    } else {
+        (
+            FrontMatter {
+                title: file
+                    .path()
+                    .file_stem()
+                    .ok_or_else(|| anyhow::anyhow!("Failed to get file stem"))?
+                    .to_str()
+                    .ok_or_else(|| anyhow::anyhow!("Failed to convert path to string"))?
+                    .to_owned(),
+                description: None,
+            },
+            content,
         )
-    })?;
+    };
 
     let sections = extract_sections(&content, &metadata);
 
