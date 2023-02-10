@@ -1,6 +1,9 @@
 use axum::Router;
 use std::env;
-use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use tower_http::{
+    cors::{AllowCredentials, AllowOrigin, CorsLayer},
+    trace::TraceLayer,
+};
 
 use crate::{
     axum::{session, state},
@@ -31,7 +34,15 @@ pub async fn create() -> Router {
     Router::new()
         .merge(routers::mount())
         .layer(session::layer())
-        .layer(CorsLayer::permissive())
+        .layer(
+            CorsLayer::permissive()
+                .allow_origin(AllowOrigin::mirror_request())
+                .allow_credentials(AllowCredentials::predicate(|origin, _| {
+                    let origin = origin.to_str().unwrap_or("");
+
+                    origin.ends_with("clippy.help") || origin == "http://localhost:3000"
+                })),
+        )
         .layer(TraceLayer::new_for_http())
         .with_state(state::create(prisma))
 }

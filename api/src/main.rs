@@ -17,7 +17,7 @@ async fn main() {
     logger::setup();
 
     let app = app::create().await;
-    let address = SocketAddr::from(([0, 0, 0, 0], 3000));
+    let address = SocketAddr::from(([0, 0, 0, 0], 8000));
 
     println!("⚡ Clippy API started on http://{address}");
     Server::bind(&address)
