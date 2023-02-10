@@ -17,22 +17,10 @@ async fn _migrate(client: &PrismaClient) -> Result<()> {
 }
 
 pub async fn migrate(client: &PrismaClient) -> Result<()> {
-    let mut attempts = 0;
+    #[cfg(not(debug_assertions))]
+    sleep(Duration::from_secs(1)).await;
 
-    loop {
-        attempts += 1;
-        let result = _migrate(client).await;
-
-        if result.is_ok() {
-            break;
-        }
-
-        if attempts > 10 {
-            return Err(result.unwrap_err());
-        }
-
-        sleep(Duration::from_millis(500)).await;
-    }
+    _migrate(client).await?;
 
     info!("Database migrated");
 
