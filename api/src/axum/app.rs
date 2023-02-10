@@ -4,7 +4,7 @@ use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
 use crate::{
     axum::{session, state},
-    prisma, routers,
+    routers,
     utils::db,
 };
 
@@ -23,11 +23,7 @@ pub async fn create() -> Router {
         assert!(env::var(var).is_ok(), "${var} not set");
     }
 
-    // Wait for database to be ready in production
-    #[cfg(not(debug_assertions))]
-    sleep(Duration::from_secs(1)).await;
-
-    let prisma = prisma::new_client().await.unwrap();
+    let prisma = db::new().await.unwrap();
     db::migrate(&prisma)
         .await
         .expect("Failed to migrate database");
