@@ -17,9 +17,6 @@ async fn _migrate(client: &PrismaClient) -> Result<()> {
 }
 
 pub async fn migrate(client: &PrismaClient) -> Result<()> {
-    #[cfg(not(debug_assertions))]
-    sleep(Duration::from_secs(1)).await;
-
     _migrate(client).await?;
 
     info!("Database migrated");
