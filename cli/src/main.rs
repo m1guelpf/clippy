@@ -121,7 +121,7 @@ async fn main() {
                 .await
                 .unwrap();
 
-            dbg!(results);
+            println!("{results:?}");
         }
         Commands::Ask { slug, query } => {
             let client = OpenAI::new();

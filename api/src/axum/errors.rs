@@ -12,9 +12,20 @@ pub enum ApiError {
 
     #[error("Unauthorized.")]
     #[status(StatusCode::UNAUTHORIZED)]
+    AuthenticationRequired,
+
+    #[error("This link has expired.")]
+    #[status(StatusCode::UNAUTHORIZED)]
+    SignatureExpired,
+
+    #[error("Unauthorized.")]
+    #[status(StatusCode::UNAUTHORIZED)]
     InvalidSignature,
 
     #[error("{0}")]
     #[status(StatusCode::BAD_REQUEST)]
     ClientError(String),
+
+    #[error("{0}")]
+    ServerError(String),
 }

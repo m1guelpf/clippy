@@ -10,20 +10,26 @@ hmac = "0.12.1"
 sha2 = "0.10.6"
 qstring = "0.7.2"
 anyhow = "1.0.69"
+chrono = "0.4.19"
 dotenvy = "0.15.6"
 futures = "0.3.26"
 tracing = "0.1.37"
 map-macro = "0.2.5"
+schemars = "0.8.11"
 thiserror = "1.0.38"
+lazy_static = "1.4.0"
 serde_json = "1.0.91"
 axum-sessions = "0.4.1"
 async-session = "3.0.0"
 tokio-stream = "0.1.11"
+axum-jsonschema = "0.5.0"
 axum-derive-error = "0.1.0"
 clippy = { path = "../clippy" }
 tokio = { version = "1.25.0", features = ["full"] }
 axum = { version = "0.6.4", features = ["headers"] }
 serde = { version = "1.0.152", features = ["derive"] }
+postmark = { version = "0.5.0", features = ["reqwest"] }
+validator = { version = "0.16.0", features = ["derive"] }
 tower-http = { version = "0.3.5", features = ["cors", "trace"] }
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 prisma-client-rust = { git = "https://github.com/Brendonovich/prisma-client-rust", tag = "0.6.4", default-features = false, features = ["mysql", "migrations"] }

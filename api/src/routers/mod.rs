@@ -1,5 +1,6 @@
 use axum::{response::Redirect, routing::get, Json, Router};
 
+mod auth;
 mod project;
 mod widget;
 
@@ -9,6 +10,7 @@ pub fn mount() -> Router<AppState> {
     Router::new()
         .merge(widget::mount())
         .merge(project::mount())
+        .nest("/auth", auth::mount())
         .route("/", get(|| async { Redirect::to("https://clippy.help") }))
         .route("/version", get(version))
 }

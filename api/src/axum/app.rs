@@ -11,9 +11,11 @@ use crate::{
 const REQUIRED_ENV_VARS: &[&str] = &[
     "APP_KEY",
     "APP_URL",
+    "MAIL_FROM",
     "QDRANT_URL",
     "DATABASE_URL",
     "OPENAI_API_KEY",
+    "POSTMARK_TOKEN",
 ];
 
 pub async fn create() -> Router {
