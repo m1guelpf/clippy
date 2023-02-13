@@ -1,7 +1,7 @@
 use axum::Router;
 use std::env;
 use tower_http::{
-    cors::{AllowCredentials, AllowOrigin, CorsLayer},
+    cors::{AllowCredentials, AllowHeaders, AllowOrigin, CorsLayer},
     trace::TraceLayer,
 };
 
@@ -37,6 +37,7 @@ pub async fn create() -> Router {
         .layer(
             CorsLayer::permissive()
                 .allow_origin(AllowOrigin::mirror_request())
+                .allow_headers(AllowHeaders::mirror_request())
                 .allow_credentials(AllowCredentials::predicate(|origin, _| {
                     let origin = origin.to_str().unwrap_or("");
 
