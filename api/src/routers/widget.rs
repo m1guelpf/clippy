@@ -1,8 +1,7 @@
 use axum::{
-    extract::State,
     response::{
         sse::{Event, KeepAlive},
-        IntoResponse, Sse,
+        Sse,
     },
     routing::{get, post},
     Json, Router,
@@ -13,40 +12,40 @@ use std::convert::Infallible;
 use tokio_stream::StreamExt;
 
 use crate::{
-    axum::{
-        errors::{ApiError, ApiResult},
-        extractors::{Origin, Project},
-        state::AppState,
-    },
-    prisma::{self, project},
+    axum::{extractors::ProjectFromOrigin, state::AppState},
+    prisma::project,
 };
 use ::clippy::stream::PartialResult;
 
 pub fn mount() -> Router<AppState> {
-    Router::new()
-        .route("/widget", get(widget_info))
-        .route("/:project/stream", post(stream))
+    Router::new().nest(
+        "/widget",
+        Router::new()
+            .route("/", get(widget_info))
+            .route("/stream", post(stream)),
+    )
 }
 
-async fn widget_info(
-    Origin(origin): Origin,
-    State(state): State<AppState>,
-) -> ApiResult<impl IntoResponse> {
-    let project = state
-        .prisma
-        .project()
-        .find_first(vec![project::WhereParam::Origins(
-            prisma::read_filters::JsonFilter::ArrayContains(Some(origin.into())),
-        )])
-        .select(project::select! ({ id image_url copy }))
-        .exec()
-        .await;
+#[derive(Debug, serde::Serialize)]
+struct WidgetInfoResponse {
+    id: String,
+    copy: Value,
+    image_url: Option<String>,
+}
 
-    let Ok(Some(project)) = project else {
-        return Err(ApiError::ProjectNotFound);
-    };
+impl From<project::Data> for WidgetInfoResponse {
+    fn from(project: project::Data) -> Self {
+        Self {
+            id: project.id,
+            copy: project.copy,
+            image_url: project.image_url,
+        }
+    }
+}
 
-    Ok(Json(serde_json::to_value(project).unwrap()))
+#[allow(clippy::unused_async)]
+async fn widget_info(ProjectFromOrigin(project): ProjectFromOrigin) -> Json<WidgetInfoResponse> {
+    Json(project.into())
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -56,7 +55,7 @@ struct AskRequest {
 
 #[allow(clippy::unused_async)]
 async fn stream(
-    Project(project): Project,
+    ProjectFromOrigin(project): ProjectFromOrigin,
     Json(req): Json<AskRequest>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     let stream = clippy::stream::ask(project.index_name, req.query);

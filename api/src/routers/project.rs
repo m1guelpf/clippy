@@ -18,7 +18,7 @@ use ::clippy::{build_prompt, search_project, stream::PartialResult, OpenAI};
 
 pub fn mount() -> Router<AppState> {
     Router::new().nest(
-        "/:project",
+        "/project/:project",
         Router::new()
             .route("/", get(project_info))
             .route("/search", post(search))

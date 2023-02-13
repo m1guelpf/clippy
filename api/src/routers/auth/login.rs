@@ -12,25 +12,22 @@ use chrono::Duration;
 use map_macro::map;
 use schemars::JsonSchema;
 use serde_json::json;
-use signed_url::SignedUrl;
 use validator::Validate;
 
 use crate::{
     axum::{
         errors::{ApiError, ApiResult},
-        extractors::{signed_url, User},
+        extractors::{signed_url, SignedUrl},
         state::AppState,
     },
-    prisma::{team, user},
+    prisma::user,
     utils::email,
 };
 
 pub fn mount() -> Router<AppState> {
     Router::new()
-        .route("/login", get(magic_login))
-        .route("/login", post(request_link))
-        .route("/user", get(get_user))
-        .route("/teams", get(get_teams))
+        .route("/", get(magic_login))
+        .route("/", post(request_link))
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Validate, JsonSchema)]
@@ -41,8 +38,8 @@ struct MagicLoginRequest {
 
 async fn magic_login(
     _: SignedUrl,
-    State(state): State<AppState>,
     mut session: WritableSession,
+    State(state): State<AppState>,
     Query(query): Query<HashMap<String, String>>,
 ) -> ApiResult<impl IntoResponse> {
     let email = query
@@ -84,29 +81,4 @@ async fn request_link(Json(req): Json<MagicLoginRequest>) -> ApiResult<impl Into
         .map_err(|_| ApiError::ServerError("Could not send email".into()))?;
 
     Ok(Json(json!({ "message": "Email sent" })))
-}
-
-#[allow(clippy::unused_async)]
-async fn get_user(User(user): User) -> impl IntoResponse {
-    Json(user)
-}
-
-#[allow(clippy::unused_async)]
-async fn get_teams(
-    User(user): User,
-    State(state): State<AppState>,
-) -> ApiResult<impl IntoResponse> {
-    let teams = state
-        .prisma
-        .team()
-        .find_many(vec![team::members::some(vec![user::id::equals(user.id)])])
-        .with(team::projects::fetch(vec![]))
-        .exec()
-        .await;
-
-    dbg!(&teams);
-
-    let teams = teams.map_err(|_| ApiError::ServerError("Could not get teams".into()))?;
-
-    Ok(Json(teams))
 }
