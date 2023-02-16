@@ -2,7 +2,7 @@ mod origin;
 mod project;
 pub mod signed_url;
 mod team;
-mod user;
+pub mod user;
 
 pub use origin::Origin;
 pub use project::{Project, ProjectFromOrigin};

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use axum::{
     extract::{Query, State},
     response::{IntoResponse, Redirect},
-    routing::{get, post},
+    routing::{delete, get, post},
     Router,
 };
 use axum_jsonschema::Json;
@@ -17,7 +17,7 @@ use validator::Validate;
 use crate::{
     axum::{
         errors::{ApiError, ApiResult},
-        extractors::{signed_url, SignedUrl},
+        extractors::{signed_url, user::SESSION_IDENTIFIER, SignedUrl},
         state::AppState,
     },
     prisma::user,
@@ -28,6 +28,7 @@ pub fn mount() -> Router<AppState> {
     Router::new()
         .route("/", get(magic_login))
         .route("/", post(request_link))
+        .route("/", delete(logout))
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Validate, JsonSchema)]
@@ -59,7 +60,7 @@ async fn magic_login(
     };
 
     session
-        .insert("user_id", user.id)
+        .insert(SESSION_IDENTIFIER, user.id)
         .map_err(|_| ApiError::ServerError("Could not insert user_id into session".into()))?;
 
     Ok(Redirect::to("https://clippy.help/dashboard"))
@@ -81,4 +82,11 @@ async fn request_link(Json(req): Json<MagicLoginRequest>) -> ApiResult<impl Into
         .map_err(|_| ApiError::ServerError("Could not send email".into()))?;
 
     Ok(Json(json!({ "message": "Email sent" })))
+}
+
+#[allow(clippy::unused_async)]
+async fn logout(mut session: WritableSession) -> impl IntoResponse {
+    session.remove(SESSION_IDENTIFIER);
+
+    Json(json!({ "message": "Logged out" }))
 }

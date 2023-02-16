@@ -6,6 +6,8 @@ use crate::{
     prisma::user,
 };
 
+pub const SESSION_IDENTIFIER: &str = "user_id";
+
 pub struct User(pub user::Data);
 
 #[async_trait]
@@ -19,7 +21,7 @@ impl FromRequestParts<AppState> for User {
         let session = parts.extract::<ReadableSession>().await.unwrap();
 
         let user_id = session
-            .get("user_id")
+            .get(SESSION_IDENTIFIER)
             .ok_or(ApiError::AuthenticationRequired)?;
 
         let user = state
