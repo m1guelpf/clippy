@@ -6,13 +6,14 @@ use axum::{
     http::request::Parts,
     RequestPartsExt,
 };
+use axum_sessions::extractors::ReadableSession;
 
 use crate::{
     axum::{errors::ApiError, state::AppState},
-    prisma::{self, project},
+    prisma::{self, project, team, user},
 };
 
-use super::Origin;
+use super::{user::SESSION_IDENTIFIER, Origin};
 
 pub struct Project(pub project::Data);
 
@@ -29,6 +30,15 @@ impl FromRequestParts<AppState> for Project {
             .await
             .unwrap();
 
+        let session = parts
+            .extract::<ReadableSession>()
+            .await
+            .map_err(|_| ApiError::ServerError("Missing session".to_string()))?;
+
+        let user_id = session
+            .get::<String>(SESSION_IDENTIFIER)
+            .ok_or(ApiError::AuthenticationRequired)?;
+
         let Path(path) = parts
             .extract::<Path<HashMap<String, String>>>()
             .await
@@ -42,7 +52,10 @@ impl FromRequestParts<AppState> for Project {
         let project = state
             .prisma
             .project()
-            .find_unique(project::UniqueWhereParam::IdEquals(path))
+            .find_first(vec![
+                project::id::equals(path),
+                project::team::is(vec![team::members::some(vec![user::id::equals(user_id)])]),
+            ])
             .exec()
             .await;
 

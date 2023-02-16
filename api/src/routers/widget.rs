@@ -4,9 +4,12 @@ use axum::{
         Sse,
     },
     routing::{get, post},
-    Json, Router,
+    Router,
 };
+use axum_jsonschema::Json;
 use futures::Stream;
+use map_macro::map;
+use schemars::JsonSchema;
 use serde_json::{json, Value};
 use std::convert::Infallible;
 use tokio_stream::StreamExt;
@@ -15,13 +18,14 @@ use crate::{
     axum::{extractors::ProjectFromOrigin, state::AppState},
     prisma::project,
 };
-use ::clippy::stream::PartialResult;
+use ::clippy::{search_project, stream::PartialResult};
 
 pub fn mount() -> Router<AppState> {
     Router::new().nest(
         "/widget",
         Router::new()
             .route("/", get(widget_info))
+            .route("/search", get(search))
             .route("/stream", post(stream)),
     )
 }
@@ -48,9 +52,35 @@ async fn widget_info(ProjectFromOrigin(project): ProjectFromOrigin) -> Json<Widg
     Json(project.into())
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, serde::Deserialize, JsonSchema)]
 struct AskRequest {
     query: String,
+}
+
+async fn search(
+    ProjectFromOrigin(project): ProjectFromOrigin,
+    Json(req): Json<AskRequest>,
+) -> Json<Value> {
+    let results = search_project(&project.index_name, &req.query)
+        .await
+        .unwrap();
+
+    Json(
+        serde_json::to_value(
+            results
+                .into_iter()
+                .map(|r| {
+                    map! {
+                        "path" => r.payload.path,
+                        "text" => r.payload.text,
+                        "title" => r.payload.title,
+                        "page" => r.payload.page_title,
+                    }
+                })
+                .collect::<Vec<_>>(),
+        )
+        .unwrap(),
+    )
 }
 
 #[allow(clippy::unused_async)]
