@@ -1,4 +1,5 @@
 use anyhow::Result;
+use schemars::JsonSchema;
 use tracing::info;
 
 #[cfg(not(debug_assertions))]
@@ -32,4 +33,13 @@ pub async fn migrate(client: &PrismaClient) -> Result<()> {
     info!("Database migrated");
 
     Ok(())
+}
+
+#[derive(serde::Deserialize, JsonSchema)]
+#[serde(remote = "prisma::ModelType")]
+pub enum ModelTypeDef {
+    #[serde(rename = "Metal")]
+    Metal,
+    #[serde(rename = "Plastic")]
+    Plastic,
 }

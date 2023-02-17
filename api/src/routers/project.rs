@@ -13,7 +13,8 @@ use crate::{
         extractors::Project,
         state::AppState,
     },
-    prisma::project,
+    prisma::{project, ModelType},
+    utils::db,
 };
 
 pub fn mount() -> Router<AppState> {
@@ -36,6 +37,8 @@ struct UpdateProjectRequest {
     name: String,
     image_url: String,
     origins: Vec<String>,
+    #[serde(with = "db::ModelTypeDef")]
+    model_type: ModelType,
 }
 
 async fn update_project(
@@ -50,6 +53,7 @@ async fn update_project(
             project::id::equals(project.id),
             vec![
                 project::name::set(req.name),
+                project::model_type::set(req.model_type),
                 project::origins::set(req.origins.into()),
                 project::image_url::set(Some(req.image_url)),
             ],

@@ -87,9 +87,12 @@ impl FromRequestParts<AppState> for ProjectFromOrigin {
         let project = state
             .prisma
             .project()
-            .find_first(vec![project::WhereParam::Origins(
-                prisma::read_filters::JsonFilter::ArrayContains(Some(origin.into())),
-            )])
+            .find_first(vec![
+                project::status::equals(prisma::ProjectStatus::Trained),
+                project::WhereParam::Origins(prisma::read_filters::JsonFilter::ArrayContains(
+                    Some(origin.into()),
+                )),
+            ])
             .exec()
             .await;
 
