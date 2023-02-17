@@ -88,7 +88,7 @@ async fn stream(
     ProjectFromOrigin(project): ProjectFromOrigin,
     Json(req): Json<AskRequest>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    let stream = clippy::stream::ask(project.index_name, req.query);
+    let stream = clippy::stream::ask(project.index_name, req.query, project.model_type.into());
 
     let stream = stream.map(|e| {
         let Ok(event) = e else {

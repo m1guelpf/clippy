@@ -7,7 +7,9 @@ use std::{
     process,
 };
 
-use ::clippy::{build_prompt, into_document, search_project, Document, OpenAI, Qdrant};
+use ::clippy::{
+    build_prompt, into_document, openai::ModelType, search_project, Document, OpenAI, Qdrant,
+};
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -130,7 +132,7 @@ async fn main() {
             let query_points = client.raw_embed(&query).await.unwrap();
             let results = qdrant.query(query_points).await.unwrap();
             let response = client
-                .prompt(&build_prompt(&query, &results))
+                .prompt(&build_prompt(&query, &results), ModelType::Davinci)
                 .await
                 .unwrap();
 

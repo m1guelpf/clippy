@@ -5,7 +5,11 @@ use async_openai::{
 };
 use backoff::ExponentialBackoffBuilder;
 use futures::future;
-use std::{sync::Arc, time::Duration};
+use std::{
+    fmt::{self, Display},
+    sync::Arc,
+    time::Duration,
+};
 use uuid::Uuid;
 
 use crate::{
@@ -21,6 +25,21 @@ pub struct OpenAI {
 pub struct Answer {
     pub answer: String,
     pub sources: Vec<String>,
+}
+
+#[derive(Debug)]
+pub enum ModelType {
+    Davinci,
+    Curie,
+}
+
+impl Display for ModelType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Davinci => write!(f, "text-davinci-003"),
+            Self::Curie => write!(f, "text-curie-001"),
+        }
+    }
 }
 
 impl OpenAI {
@@ -117,9 +136,9 @@ impl OpenAI {
     /// # Errors
     ///
     /// This function will panic if the Completions API returns an error.
-    pub async fn prompt(&self, prompt: &str) -> Result<Answer> {
+    pub async fn prompt(&self, prompt: &str, model_type: ModelType) -> Result<Answer> {
         let request = CreateCompletionRequestArgs::default()
-            .model("text-davinci-003")
+            .model(model_type.to_string())
             .temperature(0.5)
             .max_tokens(400_u16)
             .prompt(prompt)

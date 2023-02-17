@@ -1,7 +1,7 @@
 #![warn(clippy::all, clippy::pedantic, clippy::nursery)]
 
 mod langchain;
-mod openai;
+pub mod openai;
 mod parser;
 mod qdrant;
 pub mod stream;

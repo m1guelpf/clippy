@@ -7,7 +7,8 @@ use std::time::Duration;
 #[cfg(not(debug_assertions))]
 use tokio::time::sleep;
 
-use crate::prisma::{self, PrismaClient};
+use crate::prisma::{self, ModelType, PrismaClient};
+use ::clippy::openai;
 
 async fn _migrate(client: &PrismaClient) -> Result<()> {
     #[cfg(debug_assertions)]
@@ -42,4 +43,13 @@ pub enum ModelTypeDef {
     Metal,
     #[serde(rename = "Plastic")]
     Plastic,
+}
+
+impl From<ModelType> for openai::ModelType {
+    fn from(val: ModelType) -> Self {
+        match val {
+            ModelType::Metal => Self::Davinci,
+            ModelType::Plastic => Self::Curie,
+        }
+    }
 }

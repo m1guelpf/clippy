@@ -3,7 +3,7 @@ use futures::Stream;
 
 use crate::{
     build_prompt,
-    openai::Answer,
+    openai::{Answer, ModelType},
     qdrant::{Payload, PointResult},
     OpenAI, Qdrant,
 };
@@ -28,6 +28,7 @@ impl From<&Vec<PointResult>> for PartialResult {
 pub fn ask(
     project_id: String,
     query: String,
+    model_type: ModelType,
 ) -> impl Stream<Item = std::result::Result<PartialResult, anyhow::Error>> {
     try_fn_stream(|emitter| async move {
         let client = OpenAI::new();
@@ -37,7 +38,9 @@ pub fn ask(
         let results = qdrant.query(query_points).await?;
         emitter.emit((&results).into()).await;
 
-        let answer = client.prompt(&build_prompt(&query, &results)).await?;
+        let answer = client
+            .prompt(&build_prompt(&query, &results), model_type)
+            .await?;
         emitter.emit(answer.into()).await;
 
         Ok(())
