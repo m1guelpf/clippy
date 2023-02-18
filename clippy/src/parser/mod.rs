@@ -2,6 +2,7 @@ mod heading;
 
 use anyhow::Result;
 use heading::Heading;
+use inflector::Inflector;
 use lazy_static::lazy_static;
 use map_macro::map;
 use regex::Regex;
@@ -74,7 +75,7 @@ impl State {
             is_inside_code_block: false,
             sections: vec![MarkdownSection::default()],
             depth_map: map! {
-                0 => title
+                1 => title
             },
         }
     }
@@ -124,7 +125,7 @@ impl State {
     }
 }
 
-pub fn extract_sections(content: &str, metadata: &FrontMatter) -> Vec<MarkdownSection> {
+pub fn extract_sections(content: &str, metadata: &mut FrontMatter) -> Vec<MarkdownSection> {
     let mut state = State::with_title(metadata.title.clone());
 
     for mut line in content.lines().map(ToString::to_string) {
@@ -149,6 +150,7 @@ pub fn extract_sections(content: &str, metadata: &FrontMatter) -> Vec<MarkdownSe
             }
         }
 
+        metadata.title = state.depth_map.get(&1).unwrap().clone();
         state.push_line(&line);
     }
 
@@ -173,7 +175,7 @@ pub struct Document {
 pub fn into_document(file: &DirEntry, base_path: String) -> Result<Document> {
     let content = fs::read_to_string(file.path())?;
 
-    let (metadata, content) = if content.trim().starts_with("---") {
+    let (mut metadata, content) = if content.trim().starts_with("---") {
         parse_meta(&content).map_err(|err| {
             anyhow::anyhow!(
                 "Failed to parse front matter for file {}: {}",
@@ -190,14 +192,15 @@ pub fn into_document(file: &DirEntry, base_path: String) -> Result<Document> {
                     .ok_or_else(|| anyhow::anyhow!("Failed to get file stem"))?
                     .to_str()
                     .ok_or_else(|| anyhow::anyhow!("Failed to convert path to string"))?
-                    .to_owned(),
+                    .to_owned()
+                    .to_title_case(),
                 description: None,
             },
             content,
         )
     };
 
-    let sections = extract_sections(&content, &metadata);
+    let sections = extract_sections(&content, &mut metadata);
 
     Ok(Document {
         sections,
