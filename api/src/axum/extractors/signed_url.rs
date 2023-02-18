@@ -57,7 +57,7 @@ impl<S> FromRequestParts<S> for SignedUrl {
             }
         }
 
-        Ok(SignedUrl)
+        Ok(Self)
     }
 }
 

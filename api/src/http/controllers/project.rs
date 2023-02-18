@@ -27,8 +27,8 @@ lazy_static! {
 #[derive(Debug, serde::Deserialize, JsonSchema)]
 pub struct Request {
     name: String,
-    image_url: String,
     origins: Vec<String>,
+    image_url: Option<String>,
     #[serde(with = "db::ModelTypeDef")]
     model_type: ModelType,
 }
@@ -51,12 +51,19 @@ pub async fn store(
         .gen("proj")
         .map_err(|_| ApiError::ServerError("Failed to generate project id.".to_string()))?;
 
-    let copy = DEFAULT_COPY.clone();
-
     let project = state
         .prisma
         .project()
-        .create(id, req.name, copy, team::id::equals(team.id), vec![])
+        .create(
+            id,
+            req.name,
+            DEFAULT_COPY.clone(),
+            team::id::equals(team.id),
+            vec![
+                project::origins::set(req.origins.into()),
+                project::image_url::set(req.image_url),
+            ],
+        )
         .exec()
         .await
         .unwrap();
@@ -76,9 +83,9 @@ pub async fn update(
             project::id::equals(project.id),
             vec![
                 project::name::set(req.name),
+                project::image_url::set(req.image_url),
                 project::model_type::set(req.model_type),
                 project::origins::set(req.origins.into()),
-                project::image_url::set(Some(req.image_url)),
             ],
         )
         .exec()
