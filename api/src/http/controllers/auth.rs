@@ -2,16 +2,14 @@ use std::collections::HashMap;
 
 use axum::{
     extract::{Query, State},
-    response::{IntoResponse, Redirect},
-    routing::{delete, get, post},
-    Router,
+    response::Redirect,
 };
 use axum_jsonschema::Json;
 use axum_sessions::extractors::WritableSession;
 use chrono::Duration;
 use map_macro::map;
 use schemars::JsonSchema;
-use serde_json::json;
+use serde::{Deserialize, Serialize};
 use validator::Validate;
 
 use crate::{
@@ -24,25 +22,18 @@ use crate::{
     utils::email,
 };
 
-pub fn mount() -> Router<AppState> {
-    Router::new()
-        .route("/", get(magic_login))
-        .route("/", post(request_link))
-        .route("/", delete(logout))
-}
-
-#[derive(Debug, serde::Deserialize, serde::Serialize, Validate, JsonSchema)]
-struct MagicLoginRequest {
+#[derive(Debug, Deserialize, Validate, JsonSchema)]
+pub struct MagicLoginRequest {
     #[validate(email)]
     email: String,
 }
 
-async fn magic_login(
+pub async fn magic_login(
     _: SignedUrl,
     mut session: WritableSession,
     State(state): State<AppState>,
     Query(query): Query<HashMap<String, String>>,
-) -> ApiResult<impl IntoResponse> {
+) -> ApiResult<Redirect> {
     let email = query
         .get("email")
         .ok_or_else(|| ApiError::ClientError("No email provided".into()))?
@@ -66,7 +57,12 @@ async fn magic_login(
     Ok(Redirect::to("https://clippy.help/dashboard"))
 }
 
-async fn request_link(Json(req): Json<MagicLoginRequest>) -> ApiResult<impl IntoResponse> {
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct StatusResponse {
+    message: &'static str,
+}
+
+pub async fn request_link(Json(req): Json<MagicLoginRequest>) -> ApiResult<Json<StatusResponse>> {
     let link = signed_url::build(
         "/auth/login",
         map! { "email" => req.email.as_ref() },
@@ -81,12 +77,16 @@ async fn request_link(Json(req): Json<MagicLoginRequest>) -> ApiResult<impl Into
         .await
         .map_err(|_| ApiError::ServerError("Could not send email".into()))?;
 
-    Ok(Json(json!({ "message": "Email sent" })))
+    Ok(Json(StatusResponse {
+        message: "Email sent",
+    }))
 }
 
 #[allow(clippy::unused_async)]
-async fn logout(mut session: WritableSession) -> impl IntoResponse {
+pub async fn logout(mut session: WritableSession) -> Json<StatusResponse> {
     session.remove(SESSION_IDENTIFIER);
 
-    Json(json!({ "message": "Logged out" }))
+    Json(StatusResponse {
+        message: "Logged out",
+    })
 }

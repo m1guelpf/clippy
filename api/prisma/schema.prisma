@@ -43,7 +43,7 @@ enum ProjectStatus {
 model Project {
     id        String        @id
     teamId    String
-    indexName String
+    indexName String?
     modelType ModelType     @default(Metal)
     status    ProjectStatus @default(Pending)
 

@@ -1,34 +1,16 @@
-use axum::{extract::State, routing::get, Router};
+use axum::extract::State;
 use axum_jsonschema::Json;
 
 use crate::{
     axum::{
         errors::{ApiError, ApiResult},
-        extractors::User,
+        extractors::{TeamForUser, User},
         state::AppState,
     },
     prisma::{team, user},
 };
 
-mod login;
-
-pub fn mount() -> Router<AppState> {
-    Router::new().nest(
-        "/auth",
-        Router::new()
-            .nest("/login", login::mount())
-            .route("/user", get(get_user))
-            .route("/teams", get(get_teams)),
-    )
-}
-
-#[allow(clippy::unused_async)]
-async fn get_user(User(user): User) -> Json<user::Data> {
-    Json(user)
-}
-
-#[allow(clippy::unused_async)]
-async fn get_teams(
+pub async fn index(
     User(user): User,
     State(state): State<AppState>,
 ) -> ApiResult<Json<Vec<team::Data>>> {
@@ -41,4 +23,9 @@ async fn get_teams(
         .map_err(|_| ApiError::ServerError("Could not get teams".into()))?;
 
     Ok(Json(teams))
+}
+
+#[allow(clippy::unused_async)]
+pub async fn show(TeamForUser(team): TeamForUser) -> Json<team::Data> {
+    Json(team)
 }

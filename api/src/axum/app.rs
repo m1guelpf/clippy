@@ -7,7 +7,7 @@ use tower_http::{
 
 use crate::{
     axum::{session, state},
-    routers,
+    http::routes,
     utils::db,
 };
 
@@ -32,7 +32,7 @@ pub async fn create() -> Router {
         .expect("Failed to migrate database");
 
     Router::new()
-        .merge(routers::mount())
+        .merge(routes::mount())
         .layer(session::layer())
         .layer(
             CorsLayer::permissive()

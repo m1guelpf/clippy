@@ -7,8 +7,8 @@ use std::net::SocketAddr;
 use crate::{axum::app, utils::logger};
 
 mod axum;
+mod http;
 mod prisma;
-mod routers;
 mod utils;
 
 #[tokio::main]
