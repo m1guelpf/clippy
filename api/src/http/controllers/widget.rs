@@ -40,11 +40,13 @@ pub async fn show(ProjectFromOrigin(project): ProjectFromOrigin) -> Json<Partial
 }
 
 #[derive(Debug, serde::Deserialize, JsonSchema)]
-pub struct AskRequest(#[serde(rename = "query")] String);
+pub struct AskRequest {
+    query: String,
+}
 
 pub async fn search(
     ProjectFromOrigin(project): ProjectFromOrigin,
-    Json(AskRequest(query)): Json<AskRequest>,
+    Json(AskRequest { query }): Json<AskRequest>,
 ) -> ApiResult<Json<Value>> {
     let results = search_project(
         &project
@@ -81,7 +83,7 @@ struct StreamError {
 #[allow(clippy::unused_async)]
 pub async fn stream(
     ProjectFromOrigin(project): ProjectFromOrigin,
-    Json(AskRequest(query)): Json<AskRequest>,
+    Json(AskRequest { query }): Json<AskRequest>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     let stream = clippy::stream::ask(
         project
