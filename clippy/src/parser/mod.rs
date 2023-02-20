@@ -1,6 +1,6 @@
 mod heading;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use heading::Heading;
 use inflector::Inflector;
 use lazy_static::lazy_static;
@@ -9,6 +9,7 @@ use regex::Regex;
 use std::{
     collections::HashMap,
     fs::{self, DirEntry},
+    path::Path,
 };
 use yaml_front_matter::YamlFrontMatter;
 
@@ -18,10 +19,24 @@ lazy_static! {
         Regex::new(r#"import\s+(?:[\{}]?\s*[\w,\s{}]+\s+from\s+)?['"].+?['"];?"#).unwrap();
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, serde::Deserialize, Default)]
 pub struct FrontMatter {
-    pub title: String,
+    pub title: Option<String>,
     pub description: Option<String>,
+}
+
+impl FrontMatter {
+    pub(crate) fn ensure_title(&self, path: &Path) -> Result<String> {
+        Ok(if let Some(title) = &self.title {
+            title.clone()
+        } else {
+            path.file_stem()
+                .ok_or_else(|| anyhow!("Failed to get file stem"))?
+                .to_str()
+                .ok_or_else(|| anyhow!("Failed to convert path to string"))?
+                .to_title_case()
+        })
+    }
 }
 
 pub fn parse_meta(content: &str) -> Result<(FrontMatter, String), Box<dyn std::error::Error>> {
@@ -69,14 +84,16 @@ struct State {
 }
 
 impl State {
-    pub fn with_title(title: String) -> Self {
+    pub fn with_title(title: Option<String>) -> Self {
         Self {
             current_section: 0,
             is_inside_code_block: false,
             sections: vec![MarkdownSection::default()],
-            depth_map: map! {
-                1 => title
-            },
+            depth_map: title.map_or_else(HashMap::new, |title| {
+                map! {
+                    1 => title
+                }
+            }),
         }
     }
 
@@ -150,7 +167,10 @@ pub fn extract_sections(content: &str, metadata: &mut FrontMatter) -> Vec<Markdo
             }
         }
 
-        metadata.title = state.depth_map.get(&1).unwrap().clone();
+        if let Some(title) = state.depth_map.get(&1) {
+            metadata.title = Some(title.clone());
+        }
+
         state.push_line(&line);
     }
 
@@ -184,27 +204,14 @@ pub fn into_document(file: &DirEntry, base_path: String) -> Result<Document> {
             )
         })?
     } else {
-        (
-            FrontMatter {
-                title: file
-                    .path()
-                    .file_stem()
-                    .ok_or_else(|| anyhow::anyhow!("Failed to get file stem"))?
-                    .to_str()
-                    .ok_or_else(|| anyhow::anyhow!("Failed to convert path to string"))?
-                    .to_owned()
-                    .to_title_case(),
-                description: None,
-            },
-            content,
-        )
+        (FrontMatter::default(), content)
     };
 
     let sections = extract_sections(&content, &mut metadata);
 
     Ok(Document {
         sections,
-        title: metadata.title,
+        title: metadata.ensure_title(&file.path())?,
         description: metadata.description,
         path: format!(
             "/{}",
@@ -212,7 +219,7 @@ pub fn into_document(file: &DirEntry, base_path: String) -> Result<Document> {
                 .strip_prefix(base_path)?
                 .with_extension("")
                 .to_str()
-                .ok_or_else(|| anyhow::anyhow!("Failed to convert path to string"))?
+                .ok_or_else(|| anyhow!("Failed to convert path to string"))?
         ),
     })
 }
