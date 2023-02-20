@@ -1,21 +1,26 @@
 use async_fn_stream::try_fn_stream;
-use futures::Stream;
+use async_openai::{error::OpenAIError, types::CreateCompletionResponse};
+use futures::{Stream, StreamExt};
 
 use crate::{
     build_prompt,
-    openai::{Answer, ModelType},
+    openai::ModelType,
     qdrant::{Payload, PointResult},
     OpenAI, Qdrant,
 };
 
 pub enum PartialResult {
-    Answer(Answer),
+    Error(String),
+    PartialAnswer(String),
     References(Vec<Payload>),
 }
 
-impl From<Answer> for PartialResult {
-    fn from(answer: Answer) -> Self {
-        Self::Answer(answer)
+impl From<Result<CreateCompletionResponse, OpenAIError>> for PartialResult {
+    fn from(answer: Result<CreateCompletionResponse, OpenAIError>) -> Self {
+        match answer {
+            Ok(res) => Self::PartialAnswer(res.choices.into_iter().map(|c| c.text).collect()),
+            Err(e) => Self::Error(e.to_string()),
+        }
     }
 }
 
@@ -38,10 +43,13 @@ pub fn ask(
         let results = qdrant.query(query_points).await?;
         emitter.emit((&results).into()).await;
 
-        let answer = client
-            .prompt(&build_prompt(&query, &results), model_type)
+        let mut answer_stream = client
+            .prompt_stream(&build_prompt(&query, &results), model_type)
             .await?;
-        emitter.emit(answer.into()).await;
+
+        while let Some(response) = answer_stream.next().await {
+            emitter.emit(response.into()).await;
+        }
 
         Ok(())
     })

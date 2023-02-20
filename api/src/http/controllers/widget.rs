@@ -107,9 +107,17 @@ pub async fn stream(
                     .json_data(results)
                     .unwrap(),
             ),
-            PartialResult::Answer(answer) => {
-                Ok::<_, Infallible>(Event::default().id("answer").json_data(answer).unwrap())
+            PartialResult::PartialAnswer(answer) => {
+                Ok::<_, Infallible>(Event::default().id("partial_answer").data(answer))
             }
+            PartialResult::Error(_) => Ok::<_, Infallible>(
+                Event::default()
+                    .id("error")
+                    .json_data(StreamError {
+                        error: "Something went wrong!",
+                    })
+                    .unwrap(),
+            ),
         }
     });
 

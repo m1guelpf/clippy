@@ -1,6 +1,6 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use async_openai::{
-    types::{CreateCompletionRequestArgs, CreateEmbeddingRequestArgs},
+    types::{CompletionResponseStream, CreateCompletionRequestArgs, CreateEmbeddingRequestArgs},
     Client,
 };
 use backoff::ExponentialBackoffBuilder;
@@ -31,6 +31,12 @@ pub struct Answer {
 pub enum ModelType {
     Davinci,
     Curie,
+}
+
+impl From<ModelType> for String {
+    fn from(model_type: ModelType) -> Self {
+        model_type.to_string()
+    }
 }
 
 impl Display for ModelType {
@@ -99,7 +105,7 @@ impl OpenAI {
                 vector: response
                     .data
                     .first()
-                    .ok_or_else(|| anyhow::anyhow!("Could not find embedding"))?
+                    .ok_or_else(|| anyhow!("Could not find embedding"))?
                     .embedding
                     .clone(),
             };
@@ -126,7 +132,7 @@ impl OpenAI {
         Ok(response
             .data
             .first()
-            .ok_or_else(|| anyhow::anyhow!("Could not find embedding"))?
+            .ok_or_else(|| anyhow!("Could not find embedding"))?
             .embedding
             .clone())
     }
@@ -138,9 +144,9 @@ impl OpenAI {
     /// This function will panic if the Completions API returns an error.
     pub async fn prompt(&self, prompt: &str, model_type: ModelType) -> Result<Answer> {
         let request = CreateCompletionRequestArgs::default()
-            .model(model_type.to_string())
-            .temperature(0.5)
             .max_tokens(400_u16)
+            .model(model_type)
+            .temperature(0.5)
             .prompt(prompt)
             .build()?;
 
@@ -148,11 +154,31 @@ impl OpenAI {
         let response = response
             .choices
             .first()
-            .ok_or_else(|| anyhow::anyhow!("Could not find completion"))?
+            .ok_or_else(|| anyhow!("Could not find completion"))?
             .text
             .clone();
 
         serde_json::from_str(&response).map_err(Into::into)
+    }
+
+    /// Prompts GPT-3 to generate an answer, returning a stream of responses.
+    ///
+    /// # Errors
+    ///
+    /// This function will panic if the Completions API returns an error.
+    pub async fn prompt_stream(
+        &self,
+        prompt: &str,
+        model_type: ModelType,
+    ) -> Result<CompletionResponseStream> {
+        let request = CreateCompletionRequestArgs::default()
+            .max_tokens(400_u16)
+            .model(model_type)
+            .temperature(0.5)
+            .prompt(prompt)
+            .build()?;
+
+        Ok(self.client.completions().create_stream(request).await?)
     }
 }
 
