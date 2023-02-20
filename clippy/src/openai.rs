@@ -69,7 +69,13 @@ impl OpenAI {
         let tokens = document
             .sections
             .iter()
-            .map(|s| s.content.clone())
+            .map(|s| {
+                format!(
+                    "{}{}",
+                    s.title.as_ref().map_or(String::new(), |t| format!("{t}: ")),
+                    s.content
+                )
+            })
             .collect::<Vec<String>>();
 
         let mut responses = Vec::new();
