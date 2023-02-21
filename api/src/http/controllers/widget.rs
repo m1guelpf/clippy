@@ -1,8 +1,11 @@
 use std::convert::Infallible;
 
-use axum::response::{
-    sse::{Event, KeepAlive},
-    Sse,
+use axum::{
+    extract::State,
+    response::{
+        sse::{Event, KeepAlive},
+        Sse,
+    },
 };
 use axum_jsonschema::Json;
 use futures::Stream;
@@ -12,8 +15,13 @@ use serde_json::Value;
 use tokio_stream::StreamExt;
 
 use crate::{
-    axum::{errors::ApiResult, extractors::ProjectFromOrigin},
+    axum::{
+        errors::{ApiError, ApiResult},
+        extractors::ProjectFromOrigin,
+        state::AppState,
+    },
     prisma::project,
+    utils::influx,
 };
 use ::clippy::{search_project, stream::PartialResult};
 
@@ -34,9 +42,15 @@ impl From<project::Data> for PartialProject {
     }
 }
 
-#[allow(clippy::unused_async)]
-pub async fn show(ProjectFromOrigin(project): ProjectFromOrigin) -> Json<PartialProject> {
-    Json(project.into())
+pub async fn show(
+    State(state): State<AppState>,
+    ProjectFromOrigin(project): ProjectFromOrigin,
+) -> ApiResult<Json<PartialProject>> {
+    influx::track_load(&state.influx, &project.id)
+        .await
+        .map_err(|_| ApiError::ServerError("Failed to track load.".to_string()))?;
+
+    Ok(Json(project.into()))
 }
 
 #[derive(Debug, serde::Deserialize, JsonSchema)]
@@ -45,9 +59,14 @@ pub struct AskRequest {
 }
 
 pub async fn search(
+    State(state): State<AppState>,
     ProjectFromOrigin(project): ProjectFromOrigin,
     Json(AskRequest { query }): Json<AskRequest>,
 ) -> ApiResult<Json<Value>> {
+    influx::track_search(&state.influx, &project.id)
+        .await
+        .map_err(|_| ApiError::ServerError("Failed to track load.".to_string()))?;
+
     let results = search_project(
         &project
             .index_name
@@ -55,7 +74,7 @@ pub async fn search(
         &query,
     )
     .await
-    .unwrap();
+    .map_err(|_| ApiError::ServerError("Failed to search project.".to_string()))?;
 
     Ok(Json(
         serde_json::to_value(
@@ -76,15 +95,20 @@ pub async fn search(
 }
 
 #[derive(Debug, serde::Serialize)]
-struct StreamError {
-    error: &'static str,
+pub struct StreamError {
+    pub error: &'static str,
 }
 
 #[allow(clippy::unused_async)]
 pub async fn stream(
+    State(state): State<AppState>,
     ProjectFromOrigin(project): ProjectFromOrigin,
     Json(AskRequest { query }): Json<AskRequest>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    influx::track_query(&state.influx, &project.id)
+        .await
+        .unwrap();
+
     let stream = clippy::stream::ask(
         project
             .index_name
@@ -95,7 +119,7 @@ pub async fn stream(
 
     let stream = stream.map(|e| {
         let Ok(event) = e else {
-            return Ok::<_, Infallible>(Event::default().id("error").json_data(StreamError{
+            return Ok::<_, Infallible>(Event::default().id("error").json_data(StreamError {
                 error: "Failed to complete query."
             }).unwrap())
         };

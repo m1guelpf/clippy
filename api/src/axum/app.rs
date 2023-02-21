@@ -14,8 +14,12 @@ use crate::{
 const REQUIRED_ENV_VARS: &[&str] = &[
     "APP_KEY",
     "APP_URL",
+    "INFLUX_DB",
     "MAIL_FROM",
+    "INFLUX_ORG",
     "QDRANT_URL",
+    "INFLUX_HOST",
+    "INFLUX_TOKEN",
     "DATABASE_URL",
     "OPENAI_API_KEY",
     "POSTMARK_TOKEN",
@@ -46,5 +50,5 @@ pub async fn create() -> Router {
                 })),
         )
         .layer(TraceLayer::new_for_http())
-        .with_state(state::create(prisma))
+        .with_state(state::create(prisma).await)
 }

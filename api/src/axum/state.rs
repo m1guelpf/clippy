@@ -1,21 +1,24 @@
+use influxdb2::Client as InfluxDB;
 use pika::pika::{InitOptions, Pika, PrefixRecord};
-use std::sync::Arc;
+use std::{env, sync::Arc};
 
 use crate::prisma::PrismaClient;
 
 #[derive(Debug)]
 pub struct State {
     pub pika: Pika,
+    pub influx: InfluxDB,
     pub prisma: PrismaClient,
 }
 
 #[allow(clippy::module_name_repetitions)]
 pub type AppState = Arc<State>;
 
-pub fn create(prisma: PrismaClient) -> AppState {
+pub async fn create(prisma: PrismaClient) -> AppState {
     Arc::new(State {
         prisma,
         pika: get_pika(),
+        influx: get_influx().await,
     })
 }
 
@@ -39,4 +42,16 @@ fn get_pika() -> Pika {
     ];
 
     Pika::new(prefixes, &InitOptions::default())
+}
+
+async fn get_influx() -> InfluxDB {
+    let db = InfluxDB::new(
+        env::var("INFLUX_HOST").unwrap(),
+        env::var("INFLUX_ORG").unwrap(),
+        env::var("INFLUX_TOKEN").unwrap(),
+    );
+
+    assert!(db.ready().await.unwrap(), "Failed to connect to InfluxDB.");
+
+    db
 }
