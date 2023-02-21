@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use axum::{
     async_trait,
     extract::{FromRequestParts, Path, State},
-    http::request::Parts,
+    http::{request::Parts, HeaderMap},
     RequestPartsExt,
 };
 use axum_sessions::extractors::ReadableSession;
@@ -82,7 +82,28 @@ impl FromRequestParts<AppState> for ProjectFromOrigin {
             .await
             .unwrap();
 
-        let Origin(origin) = parts.extract::<Origin>().await.unwrap();
+        let Origin(mut origin) = parts
+            .extract::<Origin>()
+            .await
+            .map_err(|_| ApiError::ProjectNotFound)?;
+
+        if origin.ends_with("demo.clippy.help") {
+            let headers = parts
+                .extract::<HeaderMap>()
+                .await
+                .map_err(|_| ApiError::ClientError("Invalid request".to_string()))?;
+            let referer = headers
+                .get("referer")
+                .ok_or_else(|| ApiError::ClientError("Invalid request".to_string()))?
+                .to_str()
+                .map_err(|_| ApiError::ClientError("Invalid request".to_string()))?;
+
+            origin = referer
+                .split("demo.clippy.help/")
+                .last()
+                .ok_or_else(|| ApiError::ClientError("Invalid request".to_string()))?
+                .to_string();
+        }
 
         let project = state
             .prisma
