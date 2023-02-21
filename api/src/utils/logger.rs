@@ -4,10 +4,7 @@ use tracing_subscriber::{
 
 pub fn setup() {
     tracing_subscriber::registry()
-        .with(
-            EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "clippy=debug,tower_http=debug".into()),
-        )
+        .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| "api=info".into()))
         .with(tracing_subscriber::fmt::layer())
         .init();
 }

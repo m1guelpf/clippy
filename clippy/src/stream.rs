@@ -9,6 +9,7 @@ use crate::{
     OpenAI, Qdrant,
 };
 
+#[derive(Debug)]
 pub enum PartialResult {
     Error(String),
     PartialAnswer(String),

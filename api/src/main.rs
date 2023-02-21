@@ -3,6 +3,7 @@
 use ::axum::Server;
 use dotenvy::dotenv;
 use std::net::SocketAddr;
+use tracing::info;
 
 use crate::{axum::app, utils::logger};
 
@@ -19,7 +20,7 @@ async fn main() {
     let app = app::create().await;
     let address = SocketAddr::from(([0, 0, 0, 0], 8000));
 
-    println!("⚡ Clippy API started on http://{address}");
+    info!("⚡ Clippy API started on http://{address}");
     Server::bind(&address)
         .serve(app.into_make_service())
         .await
