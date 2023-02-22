@@ -1,5 +1,12 @@
 #![warn(clippy::all, clippy::pedantic, clippy::nursery)]
 
+use anyhow::Result;
+use clap::{Parser, Subcommand};
+use dotenvy::dotenv;
+use html2md::parse_html;
+use readability::extractor::extract;
+use reqwest::Client;
+use spider::{url::Url, website::Website};
 use std::{
     fs::{self, DirEntry},
     io::Cursor,
@@ -10,11 +17,6 @@ use std::{
 use ::clippy::{
     build_prompt, into_document, openai::ModelType, search_project, Document, OpenAI, Qdrant,
 };
-
-use anyhow::Result;
-use clap::{Parser, Subcommand};
-use dotenvy::dotenv;
-use reqwest::Client;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -27,11 +29,13 @@ struct Cli {
 enum Commands {
     Embed { slug: String },
     Process { slug: String },
+    Ask { slug: String, query: String },
     Fetch { slug: String, repo: String },
     Query { slug: String, query: String },
-    Ask { slug: String, query: String },
+    Crawl { slug: String, base_url: String },
 }
 
+#[allow(clippy::too_many_lines)]
 #[tokio::main]
 async fn main() {
     dotenv().ok();
@@ -75,6 +79,46 @@ async fn main() {
                 .await
                 .unwrap();
         }
+        Commands::Crawl { slug, base_url } => {
+            if fs::metadata(format!("build/{slug}")).is_ok() {
+                eprintln!("Error: Directory already exists");
+                process::exit(1);
+            }
+
+            fs::create_dir_all(format!("build/{slug}")).expect("Failed to create directory");
+
+            let mut website = Website::new(&base_url);
+            website.configuration.user_agent = "Clippy".into();
+
+            website.scrape().await;
+
+            for page in website.get_pages() {
+                let url = Url::parse(page.get_url()).unwrap();
+                let path = url.path();
+                let doc = extract(&mut page.get_html().as_bytes(), &url).unwrap();
+                let mut markdown = parse_html(&doc.content);
+
+                if !doc.title.is_empty() {
+                    markdown = format!("---\ntitle: {}\n---\n{}", doc.title, markdown);
+                }
+
+                let file_path = PathBuf::from(format!(
+                    "build/{slug}{path}{}.md",
+                    if path.ends_with('/') { "index" } else { "" }
+                ));
+
+                if let Some(parent) = file_path.parent() {
+                    fs::create_dir_all(parent).unwrap();
+                }
+                fs::write(file_path, markdown).unwrap();
+            }
+
+            let qdrant = Qdrant::new();
+            qdrant
+                .create_collection(&format!("docs_{slug}"))
+                .await
+                .unwrap();
+        }
         Commands::Process { slug } => {
             if fs::metadata(format!("build/{slug}")).is_err() {
                 eprintln!("Error: Project does not exist");
@@ -85,11 +129,13 @@ async fn main() {
             for file in files {
                 let document = into_document(&file, format!("build/{slug}")).unwrap();
 
-                fs::write(
-                    file.path().with_extension("json"),
-                    serde_json::to_string_pretty(&document).unwrap(),
-                )
-                .unwrap();
+                if !document.sections.is_empty() {
+                    fs::write(
+                        file.path().with_extension("json"),
+                        serde_json::to_string_pretty(&document).unwrap(),
+                    )
+                    .unwrap();
+                }
 
                 fs::remove_file(file.path()).unwrap();
             }

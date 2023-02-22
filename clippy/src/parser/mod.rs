@@ -15,6 +15,7 @@ use yaml_front_matter::YamlFrontMatter;
 
 lazy_static! {
     static ref JSX_COMMENT_RE: Regex = Regex::new(r"\{/\*[\s\S]*?\*/}").unwrap();
+    static ref EMPTY_BLOCK_RE: Regex = Regex::new(r"---\s*---").unwrap();
     static ref IMPORT_RE: Regex =
         Regex::new(r#"import\s+(?:[\{}]?\s*[\w,\s{}]+\s+from\s+)?['"].+?['"];?"#).unwrap();
 }
@@ -137,6 +138,14 @@ impl State {
     pub fn get_sections(self) -> Vec<MarkdownSection> {
         self.sections
             .into_iter()
+            .map(|section| {
+                let content = EMPTY_BLOCK_RE
+                    .replace_all(section.content.trim(), "")
+                    .trim()
+                    .to_string();
+
+                MarkdownSection { content, ..section }
+            })
             .filter(|section| !section.content.is_empty())
             .collect::<Vec<_>>()
     }
