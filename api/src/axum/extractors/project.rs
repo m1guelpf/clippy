@@ -7,13 +7,16 @@ use axum::{
     RequestPartsExt,
 };
 use axum_sessions::extractors::ReadableSession;
+use url::Url;
 
 use crate::{
-    axum::{errors::ApiError, state::AppState},
+    axum::{
+        errors::ApiError,
+        extractors::{user::SESSION_IDENTIFIER, Origin},
+        state::AppState,
+    },
     prisma::{self, project, team, user},
 };
-
-use super::{user::SESSION_IDENTIFIER, Origin};
 
 pub struct Project(pub project::Data);
 
@@ -92,15 +95,20 @@ impl FromRequestParts<AppState> for ProjectFromOrigin {
                 .extract::<HeaderMap>()
                 .await
                 .map_err(|_| ApiError::ClientError("Invalid request".to_string()))?;
-            let referer = headers
-                .get("referer")
-                .ok_or_else(|| ApiError::ClientError("Invalid request".to_string()))?
-                .to_str()
-                .map_err(|_| ApiError::ClientError("Invalid request".to_string()))?;
+
+            let referer = Url::parse(
+                headers
+                    .get("referer")
+                    .ok_or_else(|| ApiError::ClientError("Invalid request".to_string()))?
+                    .to_str()
+                    .map_err(|_| ApiError::ClientError("Invalid request".to_string()))?,
+            )
+            .map_err(|_| ApiError::ClientError("Invalid request".to_string()))?;
 
             origin = referer
-                .split("demo.clippy.help/")
-                .last()
+                .path_segments()
+                .ok_or_else(|| ApiError::ClientError("Invalid request".to_string()))?
+                .next()
                 .ok_or_else(|| ApiError::ClientError("Invalid request".to_string()))?
                 .to_string();
         }
