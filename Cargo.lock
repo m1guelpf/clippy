@@ -840,6 +840,8 @@ dependencies = [
  "serde_json",
  "spider",
  "tokio",
+ "tracing",
+ "tracing-subscriber 0.3.16",
  "zip-extract",
 ]
 

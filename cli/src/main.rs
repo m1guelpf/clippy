@@ -13,6 +13,10 @@ use std::{
     path::{Path, PathBuf},
     process,
 };
+use tracing::debug;
+use tracing_subscriber::{
+    prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt, EnvFilter,
+};
 
 use ::clippy::{
     build_prompt, into_document, openai::ModelType, search_project, Document, OpenAI, Qdrant,
@@ -40,6 +44,10 @@ enum Commands {
 async fn main() {
     dotenv().ok();
     let cli = Cli::parse();
+    tracing_subscriber::registry()
+        .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| "cli=info".into()))
+        .with(tracing_subscriber::fmt::layer())
+        .init();
 
     match cli.command {
         Commands::Fetch { slug, repo } => {
@@ -89,17 +97,32 @@ async fn main() {
 
             let mut website = Website::new(&base_url);
             website.configuration.user_agent = "Clippy".into();
+            website.on_link_find_callback = |url| {
+                debug!("Found link: {url}");
+
+                url
+            };
 
             website.scrape().await;
 
             for page in website.get_pages() {
+                if !page.get_url().starts_with(&base_url) {
+                    debug!("Skipping unrelated page: {}", page.get_url());
+                    continue;
+                }
+
                 let url = Url::parse(page.get_url()).unwrap();
                 let path = url.path();
                 let doc = extract(&mut page.get_html().as_bytes(), &url).unwrap();
                 let mut markdown = parse_html(&doc.content);
 
                 if !doc.title.is_empty() {
-                    markdown = format!("---\ntitle: {}\n---\n{}", doc.title, markdown);
+                    markdown = format!("---\ntitle: \"{}\"\n---\n{}", doc.title, markdown);
+                }
+
+                if markdown.is_empty() {
+                    debug!("Skipping empty page: {url}");
+                    continue;
                 }
 
                 let file_path = PathBuf::from(format!(
@@ -112,6 +135,8 @@ async fn main() {
                 }
                 fs::write(file_path, markdown).unwrap();
             }
+
+            preprocess_archive(format!("build/{slug}")).unwrap();
 
             let qdrant = Qdrant::new();
             qdrant

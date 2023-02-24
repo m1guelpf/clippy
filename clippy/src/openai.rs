@@ -148,7 +148,7 @@ impl OpenAI {
     /// # Errors
     ///
     /// This function will panic if the Completions API returns an error.
-    pub async fn prompt(&self, prompt: &str, model_type: ModelType) -> Result<Answer> {
+    pub async fn prompt(&self, prompt: &str, model_type: ModelType) -> Result<String> {
         let request = CreateCompletionRequestArgs::default()
             .max_tokens(400_u16)
             .model(model_type)
@@ -157,14 +157,14 @@ impl OpenAI {
             .build()?;
 
         let response = self.client.completions().create(request).await?;
-        let response = response
+
+        Ok(response
             .choices
             .first()
             .ok_or_else(|| anyhow!("Could not find completion"))?
             .text
-            .clone();
-
-        serde_json::from_str(&response).map_err(Into::into)
+            .trim()
+            .to_string())
     }
 
     /// Prompts GPT-3 to generate an answer, returning a stream of responses.
