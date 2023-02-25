@@ -9,7 +9,6 @@ use axum::{
 };
 use axum_jsonschema::Json;
 use futures::Stream;
-use map_macro::map;
 use schemars::JsonSchema;
 use serde_json::Value;
 use tokio_stream::StreamExt;
@@ -23,7 +22,7 @@ use crate::{
     prisma::project,
     utils::influx,
 };
-use ::clippy::{search_project, stream::PartialResult};
+use ::clippy::{search_project, stream::PartialResult, Payload};
 
 #[derive(Debug, serde::Serialize)]
 pub struct PartialProject {
@@ -64,7 +63,7 @@ pub async fn search(
     State(state): State<AppState>,
     ProjectFromOrigin(project): ProjectFromOrigin,
     Json(AskRequest { query }): Json<AskRequest>,
-) -> ApiResult<Json<Value>> {
+) -> ApiResult<Json<Vec<Payload>>> {
     influx::track_search(&state.influx, &project.id)
         .await
         .map_err(|_| ApiError::ServerError("Failed to track load.".to_string()))?;
@@ -79,20 +78,7 @@ pub async fn search(
     .map_err(|_| ApiError::ServerError("Failed to search project.".to_string()))?;
 
     Ok(Json(
-        serde_json::to_value(
-            results
-                .into_iter()
-                .map(|r| {
-                    map! {
-                        "path" => r.payload.path,
-                        "text" => r.payload.text,
-                        "title" => r.payload.title,
-                        "page" => r.payload.page_title,
-                    }
-                })
-                .collect::<Vec<_>>(),
-        )
-        .unwrap(),
+        results.into_iter().map(|r| r.payload).collect::<Vec<_>>(),
     ))
 }
 

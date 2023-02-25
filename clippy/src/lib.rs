@@ -9,7 +9,7 @@ pub mod stream;
 pub use langchain::build_prompt;
 pub use openai::OpenAI;
 pub use parser::{into_document, Document};
-pub use qdrant::Qdrant;
+pub use qdrant::{Payload, Qdrant};
 
 use anyhow::Result;
 use qdrant::PointResult;
