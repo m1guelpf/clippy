@@ -1,6 +1,6 @@
 use axum::{
     async_trait,
-    extract::{FromRequestParts, MatchedPath, Query},
+    extract::{FromRequestParts, OriginalUri, Query},
     http::request::Parts,
 };
 use chrono::{Duration, Utc};
@@ -22,9 +22,10 @@ impl<S> FromRequestParts<S> for SignedUrl {
     type Rejection = ApiError;
 
     async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
-        let path: MatchedPath = MatchedPath::from_request_parts(parts, &())
+        let OriginalUri(url) = OriginalUri::from_request_parts(parts, &())
             .await
             .map_err(|_| ApiError::InvalidSignature)?;
+        let path = url.path();
 
         let Query(query): Query<HashMap<String, String>> = Query::from_request_parts(parts, &())
             .await
@@ -39,7 +40,7 @@ impl<S> FromRequestParts<S> for SignedUrl {
             .ok_or(ApiError::InvalidSignature)?;
 
         let query = QString::new(other_parts);
-        let unsigned_url = format!("{}{}", path.as_str(), stringify_query(&query));
+        let unsigned_url = format!("{path}{}", stringify_query(&query));
 
         if signature != hmac_sha256(&unsigned_url).unwrap() {
             return Err(ApiError::InvalidSignature);
@@ -114,11 +115,13 @@ mod tests {
     #[tokio::test]
     async fn validates_signed_url() {
         env::set_var("APP_KEY", "hunter2");
+        env::set_var("APP_URL", "https://example.com");
 
         let req = Request::builder()
-            .uri(format!(
-                "https://api.clippy.help{}",
-                signed_url::build("/login", map! {"email" => "clippy@example.com"}, None)
+            .uri(signed_url::build(
+                "/login",
+                map! {"email" => "clippy@example.com"},
+                None,
             ))
             .body(())
             .unwrap();
@@ -129,13 +132,13 @@ mod tests {
     #[tokio::test]
     async fn throws_unauthorized_error_on_invalid_signature() {
         env::set_var("APP_KEY", "hunter2");
+        env::set_var("APP_URL", "https://example.com");
 
         let req = Request::builder()
-            .uri(format!(
-                "https://api.clippy.help{}",
+            .uri(
                 signed_url::build("/login", map! {"email" => "clippy@example.com"}, None)
-                    .replace("clippy@", "admin@")
-            ))
+                    .replace("clippy@", "admin@"),
+            )
             .body(())
             .unwrap();
 
@@ -147,9 +150,10 @@ mod tests {
     #[tokio::test]
     async fn throws_unauthorized_error_on_missing_signature() {
         env::set_var("APP_KEY", "hunter2");
+        env::set_var("APP_URL", "https://example.com");
 
         let req = Request::builder()
-            .uri("https://api.clippy.help/login?email=clippy@example.com")
+            .uri("https://example.com/login?email=clippy@example.com")
             .body(())
             .unwrap();
 
@@ -161,12 +165,10 @@ mod tests {
     #[tokio::test]
     async fn works_without_extra_query_params() {
         env::set_var("APP_KEY", "hunter2");
+        env::set_var("APP_URL", "https://example.com");
 
         let req = Request::builder()
-            .uri(format!(
-                "https://api.clippy.help{}",
-                signed_url::build("/test", map! {}, None)
-            ))
+            .uri(signed_url::build("/test", map! {}, None))
             .body(())
             .unwrap();
 
@@ -176,15 +178,13 @@ mod tests {
     #[tokio::test]
     async fn throws_unauthorized_error_on_expired_signature() {
         env::set_var("APP_KEY", "hunter2");
+        env::set_var("APP_URL", "https://example.com");
 
         let req = Request::builder()
-            .uri(format!(
-                "https://api.clippy.help{}",
-                signed_url::build(
-                    "/login",
-                    map! {"email" => "clippy@example.com"},
-                    Some(Duration::seconds(-1))
-                )
+            .uri(signed_url::build(
+                "/login",
+                map! {"email" => "clippy@example.com"},
+                Some(Duration::seconds(-1)),
             ))
             .body(())
             .unwrap();
