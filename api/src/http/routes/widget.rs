@@ -10,7 +10,7 @@ pub fn mount() -> Router<AppState> {
         "/widget",
         Router::new()
             .route("/", get(WidgetController::show))
-            .route("/search", get(WidgetController::search))
+            .route("/search", post(WidgetController::search))
             .route("/stream", post(WidgetController::stream)),
     )
 }
