@@ -29,6 +29,7 @@ use ::clippy::{search_project, stream::PartialResult};
 pub struct PartialProject {
     id: String,
     copy: Value,
+    name: String,
     image_url: Option<String>,
 }
 
@@ -37,6 +38,7 @@ impl From<project::Data> for PartialProject {
         Self {
             id: project.id,
             copy: project.copy,
+            name: project.name,
             image_url: project.image_url,
         }
     }
