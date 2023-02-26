@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-
+use anyhow::Context;
 use axum::{
     extract::{Query, State},
     response::Redirect,
@@ -10,6 +9,7 @@ use chrono::Duration;
 use map_macro::map;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use validator::Validate;
 
 use crate::{
@@ -52,7 +52,7 @@ pub async fn magic_login(
 
     session
         .insert(SESSION_IDENTIFIER, user.id)
-        .map_err(|_| ApiError::ServerError("Could not insert user_id into session".into()))?;
+        .context("Could not insert user_id into session")?;
 
     Ok(Redirect::to("https://clippy.help/dashboard"))
 }
@@ -73,9 +73,7 @@ pub async fn request_link(Json(req): Json<MagicLoginRequest>) -> ApiResult<Json<
         .to(req.email)
         .build();
 
-    email::send(message)
-        .await
-        .map_err(|_| ApiError::ServerError("Could not send email".into()))?;
+    email::send(message).await.context("Failed to send email")?;
 
     Ok(Json(StatusResponse {
         message: "Email sent",

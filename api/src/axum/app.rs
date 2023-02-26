@@ -1,12 +1,17 @@
 use axum::Router;
+use sentry::integrations::tower::{NewSentryLayer, SentryHttpLayer};
 use std::env;
 use tower_http::{
     cors::{AllowCredentials, AllowHeaders, AllowMethods, AllowOrigin, CorsLayer},
-    trace::TraceLayer,
+    request_id::{PropagateRequestIdLayer, SetRequestIdLayer},
+    trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer},
 };
 
 use crate::{
-    axum::{session, state},
+    axum::{
+        session::{self, RequestIdMaker},
+        state,
+    },
     http::routes,
     utils::db,
 };
@@ -49,6 +54,14 @@ pub async fn create() -> Router {
                     origin.ends_with("clippy.help") || origin == "http://localhost:3000"
                 })),
         )
-        .layer(TraceLayer::new_for_http())
+        .layer(PropagateRequestIdLayer::x_request_id())
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(DefaultMakeSpan::new().include_headers(true))
+                .on_response(DefaultOnResponse::new().include_headers(true)),
+        )
+        .layer(SetRequestIdLayer::x_request_id(RequestIdMaker::default()))
+        .layer(SentryHttpLayer::with_transaction())
+        .layer(NewSentryLayer::new_from_top())
         .with_state(state::create(prisma).await)
 }

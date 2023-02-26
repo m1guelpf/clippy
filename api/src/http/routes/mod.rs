@@ -6,7 +6,7 @@ mod project;
 mod team;
 mod widget;
 
-use crate::axum::{errors::ApiResult, state::AppState};
+use crate::axum::state::AppState;
 
 pub fn mount() -> Router<AppState> {
     Router::new()
@@ -26,10 +26,10 @@ struct ClippyVersion {
 }
 
 #[allow(clippy::unused_async)]
-async fn version() -> ApiResult<Json<ClippyVersion>> {
-    Ok(Json(ClippyVersion {
+async fn version() -> Json<ClippyVersion> {
+    Json(ClippyVersion {
         rev: env::var("GIT_REV").ok(),
         semver: env!("CARGO_PKG_VERSION").to_string(),
         compile_time: env!("STATIC_BUILD_DATE").to_string(),
-    }))
+    })
 }

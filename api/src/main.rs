@@ -2,7 +2,7 @@
 
 use ::axum::Server;
 use dotenvy::dotenv;
-use std::net::SocketAddr;
+use std::{env, net::SocketAddr};
 use tracing::info;
 
 use crate::{axum::app, utils::logger};
@@ -15,10 +15,13 @@ mod utils;
 #[tokio::main]
 async fn main() {
     dotenv().ok();
-    logger::setup();
+    let _guard = logger::setup();
 
     let app = app::create().await;
-    let address = SocketAddr::from(([0, 0, 0, 0], 8000));
+    let address = SocketAddr::from((
+        [0, 0, 0, 0],
+        env::var("PORT").map_or(8000, |p| p.parse().unwrap()),
+    ));
 
     info!("⚡ Clippy API started on http://{address}");
     Server::bind(&address)

@@ -1,3 +1,4 @@
+use anyhow::Context;
 use axum::extract::State;
 use axum_jsonschema::Json;
 use lazy_static::lazy_static;
@@ -6,7 +7,7 @@ use serde_json::{json, Value};
 
 use crate::{
     axum::{
-        errors::{ApiError, ApiResult},
+        errors::ApiResult,
         extractors::{Project, TeamForUser},
         state::AppState,
     },
@@ -49,7 +50,7 @@ pub async fn store(
         .pika
         .clone()
         .gen("proj")
-        .map_err(|_| ApiError::ServerError("Failed to generate project id.".to_string()))?;
+        .context("Failed to generate project id.")?;
 
     let project = state
         .prisma
@@ -90,7 +91,7 @@ pub async fn update(
         )
         .exec()
         .await
-        .map_err(|_| ApiError::ServerError("Failed to update project.".to_string()))?;
+        .context("Failed to update project.")?;
 
     Ok(Json(updated_project))
 }
@@ -102,7 +103,7 @@ pub async fn delete(Project(project): Project, State(state): State<AppState>) ->
         .delete(project::id::equals(project.id))
         .exec()
         .await
-        .map_err(|_| ApiError::ServerError("Failed to delete project.".to_string()))?;
+        .context("Failed to delete project.")?;
 
     Ok(())
 }

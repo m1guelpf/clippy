@@ -1,9 +1,10 @@
+use anyhow::Context;
 use axum::extract::State;
 use axum_jsonschema::Json;
 
 use crate::{
     axum::{
-        errors::{ApiError, ApiResult},
+        errors::ApiResult,
         extractors::{TeamForUser, User},
         state::AppState,
     },
@@ -20,7 +21,7 @@ pub async fn index(
         .find_many(vec![team::members::some(vec![user::id::equals(user.id)])])
         .exec()
         .await
-        .map_err(|_| ApiError::ServerError("Could not get teams".into()))?;
+        .context("Failed to get teams")?;
 
     Ok(Json(teams))
 }

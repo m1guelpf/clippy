@@ -1,5 +1,4 @@
-use std::convert::Infallible;
-
+use anyhow::Context;
 use axum::{
     extract::State,
     response::{
@@ -11,14 +10,11 @@ use axum_jsonschema::Json;
 use futures::Stream;
 use schemars::JsonSchema;
 use serde_json::Value;
+use std::convert::Infallible;
 use tokio_stream::StreamExt;
 
 use crate::{
-    axum::{
-        errors::{ApiError, ApiResult},
-        extractors::ProjectFromOrigin,
-        state::AppState,
-    },
+    axum::{errors::ApiResult, extractors::ProjectFromOrigin, state::AppState},
     prisma::{project, ModelType},
     utils::influx,
 };
@@ -51,7 +47,7 @@ pub async fn show(
 ) -> ApiResult<Json<PartialProject>> {
     influx::track_load(&state.influx, &project.id)
         .await
-        .map_err(|_| ApiError::ServerError("Failed to track load.".to_string()))?;
+        .context("Failed to track widget load.")?;
 
     Ok(Json(project.into()))
 }
@@ -68,7 +64,7 @@ pub async fn search(
 ) -> ApiResult<Json<Vec<Payload>>> {
     influx::track_search(&state.influx, &project.id)
         .await
-        .map_err(|_| ApiError::ServerError("Failed to track load.".to_string()))?;
+        .context("Failed to track widget search.")?;
 
     let results = search_project(
         &project
@@ -77,7 +73,7 @@ pub async fn search(
         &query,
     )
     .await
-    .map_err(|_| ApiError::ServerError("Failed to search project.".to_string()))?;
+    .context("Failed to search project.")?;
 
     Ok(Json(
         results.into_iter().map(|r| r.payload).collect::<Vec<_>>(),

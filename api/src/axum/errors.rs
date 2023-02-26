@@ -4,7 +4,7 @@ use thiserror::Error;
 
 pub type ApiResult<T> = Result<T, ApiError>;
 
-#[derive(Error, ErrorResponse, PartialEq, Eq)]
+#[derive(Error, ErrorResponse)]
 pub enum ApiError {
     #[error("Project not found.")]
     #[status(StatusCode::NOT_FOUND)]
@@ -26,6 +26,12 @@ pub enum ApiError {
     #[status(StatusCode::BAD_REQUEST)]
     ClientError(String),
 
-    #[error("{0}")]
-    ServerError(String),
+    #[error(transparent)]
+    ServerError(#[from] anyhow::Error),
+}
+
+impl PartialEq for ApiError {
+    fn eq(&self, other: &Self) -> bool {
+        self.to_string() == other.to_string() && self.status_code() == other.status_code()
+    }
 }

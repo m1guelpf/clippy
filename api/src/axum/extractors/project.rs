@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use anyhow::Context;
 use axum::{
     async_trait,
     extract::{FromRequestParts, Path, State},
@@ -36,7 +37,7 @@ impl FromRequestParts<AppState> for Project {
         let session = parts
             .extract::<ReadableSession>()
             .await
-            .map_err(|_| ApiError::ServerError("Missing session".to_string()))?;
+            .context("Missing session")?;
 
         let user_id = session
             .get::<String>(SESSION_IDENTIFIER)
