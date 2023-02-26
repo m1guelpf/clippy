@@ -73,7 +73,7 @@ impl OpenAI {
                 format!(
                     "{}{}",
                     s.title.as_ref().map_or(String::new(), |t| format!("{t}: ")),
-                    s.content
+                    s.content.replace('\n', " ")
                 )
             })
             .collect::<Vec<String>>();
