@@ -45,7 +45,10 @@ pub fn ask(
         emitter.emit((&results).into()).await;
 
         let mut answer_stream = client
-            .prompt_stream(&build_prompt(&query, &results), model_type)
+            .prompt_stream(
+                &build_prompt(&query, &results.into_iter().take(2).collect::<Vec<_>>()),
+                model_type,
+            )
             .await?;
 
         while let Some(response) = answer_stream.next().await {
