@@ -865,6 +865,7 @@ dependencies = [
  "serde_json",
  "str_inflector",
  "tokio",
+ "tracing",
  "uuid",
  "yaml-front-matter",
  "zip-extract",

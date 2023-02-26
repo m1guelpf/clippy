@@ -10,6 +10,7 @@ use std::{
     sync::Arc,
     time::Duration,
 };
+use tracing::info;
 use uuid::Uuid;
 
 use crate::{
@@ -27,7 +28,7 @@ pub struct Answer {
     pub sources: Vec<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum ModelType {
     Davinci,
     Curie,
@@ -100,6 +101,11 @@ impl OpenAI {
             let input = &document.sections[i];
             let response = response??;
 
+            info!(
+                text = input.content,
+                "Generated embeddings for {} tokens.", response.usage.total_tokens
+            );
+
             let point = PointStruct {
                 id: Uuid::new_v4().to_string(),
                 payload: Payload {
@@ -135,6 +141,11 @@ impl OpenAI {
 
         let response = self.client.embeddings().create(request).await?;
 
+        info!(
+            text,
+            "Generated embeddings for {} tokens.", response.usage.total_tokens
+        );
+
         Ok(response
             .data
             .first()
@@ -157,6 +168,8 @@ impl OpenAI {
             .build()?;
 
         let response = self.client.completions().create(request).await?;
+
+        info!(prompt, usage = ?response.usage, "Prompted {} model.", model_type);
 
         Ok(response
             .choices
@@ -183,6 +196,11 @@ impl OpenAI {
             .temperature(0.5)
             .prompt(prompt)
             .build()?;
+
+        info!(
+            prompt,
+            "Prompting {} model and streaming output.", model_type
+        );
 
         Ok(self.client.completions().create_stream(request).await?)
     }

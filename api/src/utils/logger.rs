@@ -5,7 +5,7 @@ use tracing_subscriber::{
 };
 
 pub fn setup() -> sentry::ClientInitGuard {
-    let _guard = sentry::init(sentry::ClientOptions {
+    let guard = sentry::init(sentry::ClientOptions {
         traces_sample_rate: 1.0,
         attach_stacktrace: true,
         send_default_pii: true,
@@ -26,5 +26,5 @@ pub fn setup() -> sentry::ClientInitGuard {
         )
         .init();
 
-    _guard
+    guard
 }
