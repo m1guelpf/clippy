@@ -203,7 +203,10 @@ async fn main() {
             let query_points = client.raw_embed(&query).await.unwrap();
             let results = qdrant.query(query_points).await.unwrap();
             let response = client
-                .prompt(&build_prompt(&query, &results), ModelType::Davinci)
+                .prompt(
+                    &build_prompt(&query, &results.iter().map(Into::into).collect::<Vec<_>>()),
+                    ModelType::Davinci,
+                )
                 .await
                 .unwrap();
 

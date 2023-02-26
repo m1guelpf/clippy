@@ -1,20 +1,39 @@
-use indoc::formatdoc;
-use serde_json::json;
-
 use crate::qdrant::PointResult;
+use indoc::formatdoc;
+use std::fmt::Display;
+
+pub struct Context {
+    path: String,
+    content: String,
+}
+
+impl Display for Context {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Path: {}\nContent:{}", self.path, self.content)
+    }
+}
+
+impl From<&PointResult> for Context {
+    fn from(point: &PointResult) -> Self {
+        Self {
+            path: point.payload.path.clone(),
+            content: point.payload.text.clone(),
+        }
+    }
+}
 
 #[must_use]
-pub fn build_prompt(query: &str, sources: &[PointResult]) -> String {
+pub fn build_prompt(query: &str, sources: &[Context]) -> String {
     formatdoc!(
-        "Given the following extracted parts of a project's documentation and a question, create a concise answer with inline references as Markdown links when relevant.
-        If you don't know the answer or the question is not related to the project, just say that you don't know. Don't try to make up an answer.
+        "Use some of the following pieces of content to create a concise answer with inline markdown references.
+        If you don't know the answer, just say that you don't know. Don't try to make up an answer.
 
         QUESTION: {}
         =========
-        EXTRACTS: {}
+        {}
         ========
-        ANSWER:",
+        FINAL ANSWER:",
         query,
-        json!(sources)
+        sources.iter().map(ToString::to_string).collect::<Vec<_>>().join("\n")
     )
 }

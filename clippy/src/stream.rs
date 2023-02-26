@@ -46,7 +46,7 @@ pub fn ask(
 
         let mut answer_stream = client
             .prompt_stream(
-                &build_prompt(&query, &results.into_iter().take(2).collect::<Vec<_>>()),
+                &build_prompt(&query, &results.iter().map(Into::into).collect::<Vec<_>>()),
                 model_type,
             )
             .await?;
