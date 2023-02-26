@@ -19,7 +19,7 @@ use crate::{
         extractors::ProjectFromOrigin,
         state::AppState,
     },
-    prisma::project,
+    prisma::{project, ModelType},
     utils::influx,
 };
 use ::clippy::{search_project, stream::PartialResult, Payload};
@@ -29,6 +29,7 @@ pub struct PartialProject {
     id: String,
     copy: Value,
     name: String,
+    model_type: ModelType,
     image_url: Option<String>,
 }
 
@@ -39,6 +40,7 @@ impl From<project::Data> for PartialProject {
             copy: project.copy,
             name: project.name,
             image_url: project.image_url,
+            model_type: project.model_type,
         }
     }
 }
