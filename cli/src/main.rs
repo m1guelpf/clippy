@@ -2,11 +2,11 @@
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use crawler::{Config, Website};
 use dotenvy::dotenv;
 use html2md::parse_html;
 use readability::extractor::extract;
 use reqwest::Client;
-use spider::{url::Url, website::Website};
 use std::{
     fs::{self, DirEntry},
     io::Cursor,
@@ -45,7 +45,9 @@ async fn main() {
     dotenv().ok();
     let cli = Cli::parse();
     tracing_subscriber::registry()
-        .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| "cli=info".into()))
+        .with(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| "cli=debug,crawler=debug".into()),
+        )
         .with(tracing_subscriber::fmt::layer())
         .init();
 
@@ -95,46 +97,42 @@ async fn main() {
 
             fs::create_dir_all(format!("build/{slug}")).expect("Failed to create directory");
 
-            let mut website = Website::new(&base_url);
-            website.configuration.user_agent = "Clippy".into();
-            website.on_link_find_callback = |url| {
-                debug!("Found link: {url}");
+            let mut website =
+                Website::new(&base_url, Config::default()).expect("Failed to create website");
 
-                url
-            };
+            let build_path = format!("build/{slug}");
+            website
+                .crawl(move |url, html| {
+                    let build_path = build_path.clone();
 
-            website.scrape().await;
+                    async move {
+                        let path = url.path();
+                        let doc = extract(&mut html.as_bytes(), &url).unwrap();
+                        let mut markdown = parse_html(&doc.content);
 
-            for page in website.get_pages() {
-                if !page.get_url().starts_with(&base_url) {
-                    debug!("Skipping unrelated page: {}", page.get_url());
-                    continue;
-                }
+                        if !doc.title.is_empty() {
+                            markdown = format!("---\ntitle: \"{}\"\n---\n{}", doc.title, markdown);
+                        }
 
-                let url = Url::parse(page.get_url()).unwrap();
-                let path = url.path();
-                let doc = extract(&mut page.get_html().as_bytes(), &url).unwrap();
-                let mut markdown = parse_html(&doc.content);
+                        if markdown.is_empty() {
+                            debug!("Skipping empty page: {url}");
+                            return;
+                        }
 
-                if !doc.title.is_empty() {
-                    markdown = format!("---\ntitle: \"{}\"\n---\n{}", doc.title, markdown);
-                }
+                        let file_path = PathBuf::from(format!(
+                            "{}{path}{}.md",
+                            &build_path,
+                            if path.ends_with('/') { "index" } else { "" }
+                        ));
 
-                if markdown.is_empty() {
-                    debug!("Skipping empty page: {url}");
-                    continue;
-                }
-
-                let file_path = PathBuf::from(format!(
-                    "build/{slug}{path}{}.md",
-                    if path.ends_with('/') { "index" } else { "" }
-                ));
-
-                if let Some(parent) = file_path.parent() {
-                    fs::create_dir_all(parent).unwrap();
-                }
-                fs::write(file_path, markdown).unwrap();
-            }
+                        if let Some(parent) = file_path.parent() {
+                            fs::create_dir_all(parent).unwrap();
+                        }
+                        fs::write(file_path, markdown).unwrap();
+                    }
+                })
+                .await
+                .expect("Failed to crawl website");
 
             preprocess_archive(format!("build/{slug}")).unwrap();
 
