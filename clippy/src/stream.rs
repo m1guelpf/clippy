@@ -1,9 +1,9 @@
 use async_fn_stream::try_fn_stream;
-use async_openai::{error::OpenAIError, types::CreateCompletionResponse};
+use async_openai::{error::OpenAIError, types::CreateChatResponse};
 use futures::{Stream, StreamExt};
 
 use crate::{
-    build_prompt,
+    build_messages,
     openai::ModelType,
     qdrant::{Payload, PointResult},
     OpenAI, Qdrant,
@@ -16,10 +16,12 @@ pub enum PartialResult {
     References(Vec<Payload>),
 }
 
-impl From<Result<CreateCompletionResponse, OpenAIError>> for PartialResult {
-    fn from(answer: Result<CreateCompletionResponse, OpenAIError>) -> Self {
+impl From<Result<CreateChatResponse, OpenAIError>> for PartialResult {
+    fn from(answer: Result<CreateChatResponse, OpenAIError>) -> Self {
         match answer {
-            Ok(res) => Self::PartialAnswer(res.choices.into_iter().map(|c| c.text).collect()),
+            Ok(res) => {
+                Self::PartialAnswer(res.choices.into_iter().map(|c| c.message.content).collect())
+            }
             Err(e) => Self::Error(e.to_string()),
         }
     }
@@ -45,8 +47,8 @@ pub fn ask(
         emitter.emit((&results).into()).await;
 
         let mut answer_stream = client
-            .prompt_stream(
-                &build_prompt(&query, &results.iter().map(Into::into).collect::<Vec<_>>()),
+            .chat_stream(
+                build_messages(&query, &results.iter().map(Into::into).collect::<Vec<_>>()),
                 model_type,
             )
             .await?;

@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use async_openai::{
-    types::{CompletionResponseStream, CreateCompletionRequestArgs, CreateEmbeddingRequestArgs},
+    types::{ChatResponseStream, CreateChatRequestArgs, CreateEmbeddingRequestArgs, Message},
     Client,
 };
 use backoff::ExponentialBackoffBuilder;
@@ -32,6 +32,7 @@ pub struct Answer {
 pub enum ModelType {
     Davinci,
     Curie,
+    Chat,
 }
 
 impl From<ModelType> for String {
@@ -45,6 +46,7 @@ impl Display for ModelType {
         match self {
             Self::Davinci => write!(f, "text-davinci-003"),
             Self::Curie => write!(f, "text-curie-001"),
+            Self::Chat => write!(f, "gpt-3.5-turbo"),
         }
     }
 }
@@ -159,23 +161,23 @@ impl OpenAI {
     /// # Errors
     ///
     /// This function will panic if the Completions API returns an error.
-    pub async fn prompt(&self, prompt: &str, model_type: ModelType) -> Result<String> {
-        let request = CreateCompletionRequestArgs::default()
-            .max_tokens(400_u16)
+    pub async fn chat(&self, messages: Vec<Message>, model_type: ModelType) -> Result<String> {
+        let request = CreateChatRequestArgs::default()
             .model(model_type)
             .temperature(0.5)
-            .prompt(prompt)
+            .messages(messages.clone())
             .build()?;
 
-        let response = self.client.completions().create(request).await?;
+        let response = self.client.chat().create(request).await?;
 
-        info!(prompt, usage = ?response.usage, "Prompted {} model.", model_type);
+        info!(messages = ?messages, usage = ?response.usage, "Prompted {} model.", model_type);
 
         Ok(response
             .choices
             .first()
             .ok_or_else(|| anyhow!("Could not find completion"))?
-            .text
+            .message
+            .content
             .trim()
             .to_string())
     }
@@ -185,24 +187,23 @@ impl OpenAI {
     /// # Errors
     ///
     /// This function will panic if the Completions API returns an error.
-    pub async fn prompt_stream(
+    pub async fn chat_stream(
         &self,
-        prompt: &str,
+        messages: Vec<Message>,
         model_type: ModelType,
-    ) -> Result<CompletionResponseStream> {
-        let request = CreateCompletionRequestArgs::default()
-            .max_tokens(400_u16)
+    ) -> Result<ChatResponseStream> {
+        let request = CreateChatRequestArgs::default()
             .model(model_type)
             .temperature(0.5)
-            .prompt(prompt)
+            .messages(messages.clone())
             .build()?;
 
         info!(
-            prompt,
+            messages = ?messages,
             "Prompting {} model and streaming output.", model_type
         );
 
-        Ok(self.client.completions().create_stream(request).await?)
+        Ok(self.client.chat().create_stream(request).await?)
     }
 }
 

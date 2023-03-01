@@ -193,8 +193,7 @@ dependencies = [
 [[package]]
 name = "async-openai"
 version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76d0a0e9f6539c431eb36c18962df00b83bb9f2ac2a592f2107801b75b865eb6"
+source = "git+https://github.com/m1guelpf/async-openai?branch=chatgpt#375f9b60e92ae0fd08fbcbf18887ef8c83e48000"
 dependencies = [
  "backoff",
  "base64 0.21.0",
@@ -5518,8 +5517,8 @@ version = "1.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
- "cfg-if 1.0.0",
- "rand 0.8.5",
+ "cfg-if 0.1.10",
+ "rand 0.4.6",
  "static_assertions",
 ]
 

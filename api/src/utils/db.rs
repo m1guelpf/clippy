@@ -46,10 +46,7 @@ pub enum ModelTypeDef {
 }
 
 impl From<ModelType> for openai::ModelType {
-    fn from(val: ModelType) -> Self {
-        match val {
-            ModelType::Metal => Self::Davinci,
-            ModelType::Plastic => Self::Curie,
-        }
+    fn from(_: ModelType) -> Self {
+        Self::Chat
     }
 }

@@ -6,7 +6,7 @@ mod parser;
 mod qdrant;
 pub mod stream;
 
-pub use langchain::{build_prompt, Context};
+pub use langchain::{build_messages, Context};
 pub use openai::OpenAI;
 pub use parser::{into_document, Document};
 pub use qdrant::{Payload, Qdrant};

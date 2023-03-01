@@ -19,7 +19,7 @@ use tracing_subscriber::{
 };
 
 use ::clippy::{
-    build_prompt, into_document, openai::ModelType, search_project, Document, OpenAI, Qdrant,
+    build_messages, into_document, openai::ModelType, search_project, Document, OpenAI, Qdrant,
 };
 
 #[derive(Parser, Debug)]
@@ -201,9 +201,9 @@ async fn main() {
             let query_points = client.raw_embed(&query).await.unwrap();
             let results = qdrant.query(query_points).await.unwrap();
             let response = client
-                .prompt(
-                    &build_prompt(&query, &results.iter().map(Into::into).collect::<Vec<_>>()),
-                    ModelType::Davinci,
+                .chat(
+                    build_messages(&query, &results.iter().map(Into::into).collect::<Vec<_>>()),
+                    ModelType::Chat,
                 )
                 .await
                 .unwrap();

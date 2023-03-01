@@ -1,4 +1,5 @@
 use crate::qdrant::PointResult;
+use async_openai::types::{Message, MessageRole};
 use indoc::formatdoc;
 use std::fmt::Display;
 
@@ -23,17 +24,21 @@ impl From<&PointResult> for Context {
 }
 
 #[must_use]
-pub fn build_prompt(query: &str, sources: &[Context]) -> String {
-    formatdoc!(
-        "Use some of the following pieces of content to create a concise answer with inline markdown references.
-        If you don't know the answer, just say that you don't know. Don't try to make up an answer.
-
-        QUESTION: {}
-        =========
-        {}
-        ========
-        FINAL ANSWER:",
-        query,
-        sources.iter().map(ToString::to_string).collect::<Vec<_>>().join("\n")
-    )
+pub fn build_messages(query: &str, sources: &[Context]) -> Vec<Message> {
+    vec![
+        Message {
+            role: MessageRole::System,
+            content: formatdoc!(
+                "You are a helpful assistant that summarizes documentation. Answer the user's queries with the context below, providing inline references as Markdown links when relevant.
+                If you don't know the answer, just say that you don't know. Don't try to make up an answer.
+                =========
+                {}",
+                sources.iter().map(ToString::to_string).collect::<Vec<_>>().join("\n")
+            )
+        },
+        Message {
+            role: MessageRole::User,
+            content: query.to_string()
+        }
+    ]
 }
