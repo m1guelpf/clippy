@@ -1,6 +1,9 @@
 use anyhow::{anyhow, Result};
 use async_openai::{
-    types::{ChatResponseStream, CreateChatRequestArgs, CreateEmbeddingRequestArgs, Message},
+    types::{
+        ChatCompletionRequestMessage, ChatCompletionResponseStream,
+        CreateChatCompletionRequestArgs, CreateEmbeddingRequestArgs,
+    },
     Client,
 };
 use backoff::ExponentialBackoffBuilder;
@@ -161,8 +164,12 @@ impl OpenAI {
     /// # Errors
     ///
     /// This function will panic if the Completions API returns an error.
-    pub async fn chat(&self, messages: Vec<Message>, model_type: ModelType) -> Result<String> {
-        let request = CreateChatRequestArgs::default()
+    pub async fn chat(
+        &self,
+        messages: Vec<ChatCompletionRequestMessage>,
+        model_type: ModelType,
+    ) -> Result<String> {
+        let request = CreateChatCompletionRequestArgs::default()
             .model(model_type)
             .temperature(0.5)
             .messages(messages.clone())
@@ -189,10 +196,10 @@ impl OpenAI {
     /// This function will panic if the Completions API returns an error.
     pub async fn chat_stream(
         &self,
-        messages: Vec<Message>,
+        messages: Vec<ChatCompletionRequestMessage>,
         model_type: ModelType,
-    ) -> Result<ChatResponseStream> {
-        let request = CreateChatRequestArgs::default()
+    ) -> Result<ChatCompletionResponseStream> {
+        let request = CreateChatCompletionRequestArgs::default()
             .model(model_type)
             .temperature(0.5)
             .messages(messages.clone())

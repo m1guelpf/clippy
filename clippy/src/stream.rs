@@ -1,5 +1,5 @@
 use async_fn_stream::try_fn_stream;
-use async_openai::{error::OpenAIError, types::CreateChatResponse};
+use async_openai::{error::OpenAIError, types::CreateChatCompletionStreamResponse};
 use futures::{Stream, StreamExt};
 
 use crate::{
@@ -16,12 +16,15 @@ pub enum PartialResult {
     References(Vec<Payload>),
 }
 
-impl From<Result<CreateChatResponse, OpenAIError>> for PartialResult {
-    fn from(answer: Result<CreateChatResponse, OpenAIError>) -> Self {
+impl From<Result<CreateChatCompletionStreamResponse, OpenAIError>> for PartialResult {
+    fn from(answer: Result<CreateChatCompletionStreamResponse, OpenAIError>) -> Self {
         match answer {
-            Ok(res) => {
-                Self::PartialAnswer(res.choices.into_iter().map(|c| c.message.content).collect())
-            }
+            Ok(res) => Self::PartialAnswer(
+                res.choices
+                    .into_iter()
+                    .flat_map(|c| c.delta.content)
+                    .collect(),
+            ),
             Err(e) => Self::Error(e.to_string()),
         }
     }
