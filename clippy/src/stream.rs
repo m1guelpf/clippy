@@ -22,7 +22,7 @@ impl From<Result<CreateChatCompletionStreamResponse, OpenAIError>> for PartialRe
             Ok(res) => Self::PartialAnswer(
                 res.choices
                     .into_iter()
-                    .flat_map(|c| c.delta.content)
+                    .filter_map(|c| c.delta.content)
                     .collect(),
             ),
             Err(e) => Self::Error(e.to_string()),

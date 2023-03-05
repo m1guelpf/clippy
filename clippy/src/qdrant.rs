@@ -4,6 +4,7 @@ use anyhow::Result;
 use futures::future::join_all;
 use reqwest::Client;
 use serde_json::Value;
+use tracing::debug;
 
 const EMBEDDING_SIZE: i32 = 1536;
 
@@ -102,6 +103,8 @@ impl Collection {
                 .unwrap();
         }))
         .await;
+
+        debug!("Upserted {} vectors", vectors.len());
 
         Ok(())
     }
