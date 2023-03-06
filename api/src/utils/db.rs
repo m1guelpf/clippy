@@ -1,5 +1,4 @@
 use anyhow::Result;
-use schemars::JsonSchema;
 use tracing::info;
 
 #[cfg(not(debug_assertions))]
@@ -7,8 +6,7 @@ use std::time::Duration;
 #[cfg(not(debug_assertions))]
 use tokio::time::sleep;
 
-use crate::prisma::{self, ModelType, PrismaClient};
-use ::clippy::openai;
+use crate::prisma::{self, PrismaClient};
 
 async fn _migrate(client: &PrismaClient) -> Result<()> {
     #[cfg(debug_assertions)]
@@ -34,19 +32,4 @@ pub async fn migrate(client: &PrismaClient) -> Result<()> {
     info!("Database migrated");
 
     Ok(())
-}
-
-#[derive(serde::Deserialize, JsonSchema)]
-#[serde(remote = "prisma::ModelType")]
-pub enum ModelTypeDef {
-    #[serde(rename = "Metal")]
-    Metal,
-    #[serde(rename = "Plastic")]
-    Plastic,
-}
-
-impl From<ModelType> for openai::ModelType {
-    fn from(_: ModelType) -> Self {
-        Self::Chat
-    }
 }

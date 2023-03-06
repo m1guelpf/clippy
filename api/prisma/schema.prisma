@@ -30,11 +30,6 @@ model Team {
     projects Project[]
 }
 
-enum ModelType {
-    Metal
-    Plastic
-}
-
 enum ProjectStatus {
     Pending
     Trained
@@ -44,7 +39,6 @@ model Project {
     id        String        @id
     teamId    String
     indexName String?
-    modelType ModelType     @default(Metal)
     status    ProjectStatus @default(Pending)
 
     name     String

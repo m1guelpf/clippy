@@ -11,8 +11,7 @@ use crate::{
         extractors::{Project, TeamForUser},
         state::AppState,
     },
-    prisma::{project, team, ModelType},
-    utils::db,
+    prisma::{project, team},
 };
 
 lazy_static! {
@@ -30,8 +29,6 @@ pub struct Request {
     name: String,
     origins: Vec<String>,
     image_url: Option<String>,
-    #[serde(with = "db::ModelTypeDef")]
-    model_type: ModelType,
 }
 
 #[allow(clippy::unused_async)]
@@ -85,7 +82,6 @@ pub async fn update(
             vec![
                 project::name::set(req.name),
                 project::image_url::set(req.image_url),
-                project::model_type::set(req.model_type),
                 project::origins::set(req.origins.into()),
             ],
         )

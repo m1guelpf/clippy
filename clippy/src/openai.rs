@@ -8,11 +8,7 @@ use async_openai::{
 };
 use backoff::ExponentialBackoffBuilder;
 use futures::future;
-use std::{
-    fmt::{self, Display},
-    sync::Arc,
-    time::Duration,
-};
+use std::{sync::Arc, time::Duration};
 use tracing::info;
 use uuid::Uuid;
 
@@ -29,29 +25,6 @@ pub struct OpenAI {
 pub struct Answer {
     pub answer: String,
     pub sources: Vec<String>,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum ModelType {
-    Davinci,
-    Curie,
-    Chat,
-}
-
-impl From<ModelType> for String {
-    fn from(model_type: ModelType) -> Self {
-        model_type.to_string()
-    }
-}
-
-impl Display for ModelType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Davinci => write!(f, "text-davinci-003"),
-            Self::Curie => write!(f, "text-curie-001"),
-            Self::Chat => write!(f, "gpt-3.5-turbo"),
-        }
-    }
 }
 
 impl OpenAI {
@@ -164,20 +137,16 @@ impl OpenAI {
     /// # Errors
     ///
     /// This function will panic if the Completions API returns an error.
-    pub async fn chat(
-        &self,
-        messages: Vec<ChatCompletionRequestMessage>,
-        model_type: ModelType,
-    ) -> Result<String> {
+    pub async fn chat(&self, messages: Vec<ChatCompletionRequestMessage>) -> Result<String> {
         let request = CreateChatCompletionRequestArgs::default()
-            .model(model_type)
+            .model("gpt-3.5-turbo")
             .temperature(0.5)
             .messages(messages.clone())
             .build()?;
 
         let response = self.client.chat().create(request).await?;
 
-        info!(messages = ?messages, usage = ?response.usage, "Prompted {} model.", model_type);
+        info!(messages = ?messages, usage = ?response.usage, "Prompted gpt-3.5-turbo model.");
 
         Ok(response
             .choices
@@ -197,17 +166,16 @@ impl OpenAI {
     pub async fn chat_stream(
         &self,
         messages: Vec<ChatCompletionRequestMessage>,
-        model_type: ModelType,
     ) -> Result<ChatCompletionResponseStream> {
         let request = CreateChatCompletionRequestArgs::default()
-            .model(model_type)
+            .model("gpt-3.5-turbo")
             .temperature(0.5)
             .messages(messages.clone())
             .build()?;
 
         info!(
             messages = ?messages,
-            "Prompting {} model and streaming output.", model_type
+            "Prompting gpt-3.5-turbo model and streaming output."
         );
 
         Ok(self.client.chat().create_stream(request).await?)

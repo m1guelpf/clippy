@@ -4,7 +4,6 @@ use futures::{Stream, StreamExt};
 
 use crate::{
     build_messages,
-    openai::ModelType,
     qdrant::{Payload, PointResult},
     OpenAI, Qdrant,
 };
@@ -39,7 +38,6 @@ impl From<&Vec<PointResult>> for PartialResult {
 pub fn ask(
     project_id: String,
     query: String,
-    model_type: ModelType,
 ) -> impl Stream<Item = std::result::Result<PartialResult, anyhow::Error>> {
     try_fn_stream(|emitter| async move {
         let client = OpenAI::new();
@@ -50,10 +48,10 @@ pub fn ask(
         emitter.emit((&results).into()).await;
 
         let mut answer_stream = client
-            .chat_stream(
-                build_messages(&query, &results.iter().map(Into::into).collect::<Vec<_>>()),
-                model_type,
-            )
+            .chat_stream(build_messages(
+                &query,
+                &results.iter().map(Into::into).collect::<Vec<_>>(),
+            ))
             .await?;
 
         while let Some(response) = answer_stream.next().await {

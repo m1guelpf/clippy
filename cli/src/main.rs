@@ -18,9 +18,7 @@ use tracing_subscriber::{
     prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt, EnvFilter,
 };
 
-use ::clippy::{
-    build_messages, into_document, openai::ModelType, search_project, Document, OpenAI, Qdrant,
-};
+use ::clippy::{build_messages, into_document, search_project, Document, OpenAI, Qdrant};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -201,10 +199,10 @@ async fn main() {
             let query_points = client.raw_embed(&query).await.unwrap();
             let results = qdrant.query(query_points).await.unwrap();
             let response = client
-                .chat(
-                    build_messages(&query, &results.iter().map(Into::into).collect::<Vec<_>>()),
-                    ModelType::Chat,
-                )
+                .chat(build_messages(
+                    &query,
+                    &results.iter().map(Into::into).collect::<Vec<_>>(),
+                ))
                 .await
                 .unwrap();
 
