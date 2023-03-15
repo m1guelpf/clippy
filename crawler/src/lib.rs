@@ -139,6 +139,7 @@ impl Website {
                 for url in new_urls {
                     match self.should_visit(&url) {
                         Ok(_) => (),
+                        Err(SkipReason::AlreadyVisited) => continue,
                         Err(reason) => {
                             debug!("Skipping url: {url} ({reason})");
                             continue;
