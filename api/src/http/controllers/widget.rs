@@ -69,6 +69,7 @@ pub async fn search(
             .index_name
             .expect("Trained models should have an index set."),
         &query,
+        5,
     )
     .await
     .context("Failed to search project.")?;

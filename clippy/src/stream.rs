@@ -44,7 +44,7 @@ pub fn ask(
         let query_points = client.raw_embed(&query).await?;
 
         let qdrant = Qdrant::new().collection(&project_id);
-        let results = qdrant.query(query_points).await?;
+        let results = qdrant.query(query_points, 3).await?;
         emitter.emit((&results).into()).await;
 
         let mut answer_stream = client

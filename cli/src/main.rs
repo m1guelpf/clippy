@@ -186,7 +186,7 @@ async fn main() {
                 process::exit(1);
             }
 
-            let results = search_project(&format!("docs_{slug}"), &query)
+            let results = search_project(&format!("docs_{slug}"), &query, 3)
                 .await
                 .unwrap();
 
@@ -197,7 +197,7 @@ async fn main() {
             let qdrant = Qdrant::new().collection(&format!("docs_{slug}"));
 
             let query_points = client.raw_embed(&query).await.unwrap();
-            let results = qdrant.query(query_points).await.unwrap();
+            let results = qdrant.query(query_points, 3).await.unwrap();
             let response = client
                 .chat(build_messages(
                     &query,

@@ -109,12 +109,12 @@ impl Collection {
         Ok(())
     }
 
-    pub async fn query(&self, vectors: Vec<f32>) -> Result<Vec<PointResult>> {
+    pub async fn query(&self, vectors: Vec<f32>, count: usize) -> Result<Vec<PointResult>> {
         let results: Value = self
             .client
             .post(&format!("{}/points/search", self.base_url))
             .json(&serde_json::json!({
-                "limit": 3,
+                "limit": count,
                 "vector": vectors,
                 "with_payload": true,
             }))
