@@ -1,6 +1,7 @@
 #![warn(clippy::all, clippy::pedantic, clippy::nursery)]
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
+use dom_manipulator::{Html, Selector};
 use futures_util::{Future, StreamExt};
 use reqwest::{
     header::{self, HeaderMap, HeaderValue},
@@ -14,7 +15,6 @@ use std::{
     },
     time::Duration,
 };
-use tl::ParserOptions;
 use tokio::{
     sync::{mpsc, Barrier},
     time::sleep,
@@ -240,28 +240,12 @@ fn clean_url(url: &str, base_url: &Url) -> Url {
 }
 
 fn find_links(html: &str, base_url: &Url) -> Result<HashSet<Url>> {
-    let dom = tl::parse(html, ParserOptions::default())?;
-    let parser = dom.parser();
-    let mut found_urls = HashSet::new();
+    let dom = Html::parse_document(html);
+    let selector = Selector::parse("a[href]").map_err(|_| anyhow!("Failed to parse selector"))?;
 
-    let Some(links) = dom.query_selector("a[href]") else {
-        return Ok(found_urls);
-    };
-
-    let links = links
-        .filter_map(|link| link.get(parser))
-        .filter_map(tl::Node::as_tag);
-
-    for link in links {
-        let href = link
-            .attributes()
-            .get("href")
-            .flatten()
-            .unwrap()
-            .as_utf8_str();
-
-        found_urls.insert(clean_url(&href, base_url));
-    }
-
-    Ok(found_urls)
+    Ok(dom
+        .select(&selector)
+        .filter_map(|link| link.value().attr("href"))
+        .map(|href| clean_url(href, base_url))
+        .collect::<HashSet<_>>())
 }
