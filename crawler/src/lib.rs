@@ -9,6 +9,7 @@ use reqwest::{
 };
 use std::{
     collections::HashSet,
+    fmt::Display,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc,
@@ -40,6 +41,25 @@ impl Default for Config {
             processing_concurrency: 10,
             delay: Duration::from_millis(5),
             user_agent: "ClippyBot/0.1.0 (clippy.help)".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum SkipReason {
+    AlreadyVisited,
+    Blacklisted,
+    HostMismatch,
+    OutsideBasePath,
+}
+
+impl Display for SkipReason {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Blacklisted => write!(f, "Blacklisted"),
+            Self::HostMismatch => write!(f, "Host mismatch"),
+            Self::AlreadyVisited => write!(f, "Already visited"),
+            Self::OutsideBasePath => write!(f, "Outside base path"),
         }
     }
 }
@@ -117,9 +137,12 @@ impl Website {
                 self.visited_urls.insert(visited_url);
 
                 for url in new_urls {
-                    if !self.should_visit(&url) {
-                        debug!("Skipping url: {url}");
-                        continue;
+                    match self.should_visit(&url) {
+                        Ok(_) => (),
+                        Err(reason) => {
+                            debug!("Skipping url: {url} ({reason})");
+                            continue;
+                        }
                     }
 
                     self.visited_urls.insert(url.clone());
@@ -222,11 +245,24 @@ impl Website {
         });
     }
 
-    fn should_visit(&self, url: &Url) -> bool {
-        url.host() == self.base_url.host()
-            && url.path().starts_with(self.base_url.path())
-            && !self.visited_urls.contains(url)
-            && !URL_BLACKLIST.contains(&url.path())
+    fn should_visit(&self, url: &Url) -> Result<(), SkipReason> {
+        if url.host() != self.base_url.host() {
+            return Err(SkipReason::HostMismatch);
+        }
+
+        if !url.path().starts_with(self.base_url.path()) {
+            return Err(SkipReason::OutsideBasePath);
+        }
+
+        if self.visited_urls.contains(url) {
+            return Err(SkipReason::AlreadyVisited);
+        }
+
+        if URL_BLACKLIST.contains(&url.path()) {
+            return Err(SkipReason::Blacklisted);
+        }
+
+        Ok(())
     }
 }
 
