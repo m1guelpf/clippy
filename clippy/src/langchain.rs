@@ -30,9 +30,11 @@ pub fn build_messages(query: &str, sources: &[Context]) -> Vec<ChatCompletionReq
             name: None,
             role: Role::System,
             content: formatdoc!(
-                "You are a helpful assistant that summarizes documentation. Answer the user's queries with the context below, providing inline references *as Markdown links* when relevant.
-                If you don't know the answer, just say that you don't know. Don't try to make up an answer.
-                =========
+                "You are a very enthusiastic company representative who loves to help people! Given the following sections from the documentation, give a comprehensive answer to the user's question, providing inline references in `[page title](path)` format (when relevant).
+                If you are unsure or the question doesn't relate to the project, say \"Sorry, I am not sure how to answer that.\"
+
+                Documentation:
+                ---
                 {}",
                 sources.iter().map(ToString::to_string).collect::<Vec<_>>().join("\n")
             )
