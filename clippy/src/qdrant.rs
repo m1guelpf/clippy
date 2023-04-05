@@ -56,7 +56,7 @@ impl Default for Qdrant {
     }
 }
 
-#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize, opg::OpgModel)]
 pub struct Payload {
     pub text: String,
     pub path: String,

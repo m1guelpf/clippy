@@ -2,6 +2,7 @@ use axum::{response::Redirect, routing::get, Json, Router};
 use std::env;
 
 mod auth;
+mod chatgpt;
 mod project;
 mod team;
 mod widget;
@@ -14,6 +15,7 @@ pub fn mount() -> Router<AppState> {
         .merge(widget::mount())
         .merge(project::mount())
         .merge(team::mount())
+        .merge(chatgpt::mount())
         .route("/version", get(version))
         .route("/", get(|| async { Redirect::to("https://clippy.help") }))
 }

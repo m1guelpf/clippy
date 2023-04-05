@@ -50,9 +50,10 @@ pub async fn show(
     Ok(Json(project.into()))
 }
 
-#[derive(Debug, serde::Deserialize, JsonSchema)]
+#[derive(Debug, serde::Deserialize, JsonSchema, opg::OpgModel)]
 pub struct AskRequest {
-    query: String,
+    #[opg("The query to search for")]
+    pub query: String,
 }
 
 pub async fn search(
