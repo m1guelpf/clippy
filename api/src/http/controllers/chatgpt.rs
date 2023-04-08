@@ -111,7 +111,7 @@ pub async fn manifesto() -> Json<Manifest<'static>> {
         name_for_human: "Clippy",
         name_for_model: "clippy",
         description_for_human: "Upgrades ChatGPT with the latest documentation from your favorite projects.",
-        description_for_model: "Use the Clippy plugin when the user asks a question related to any of the following projects: Worldcoin (or World ID), Hop, ENS Domains, Next.js, Whop, Bun, or BuilderBook. Do not output the information returned literally, use it as additional context you might use when crafting your response.",
+        description_for_model: "Clippy allows you to retrieve relevant sections from a project's documentation. Use the Clippy plugin when the user asks a question related to any of the following projects: Worldcoin (or World ID), Hop, ENS Domains, Next.js, Whop, Bun, or BuilderBook. Do not output the information returned literally, use it as additional context you might use when crafting your response.",
         auth: ManifestAuth { r#type: "none" },
         api: ApiSpec { r#type: "openapi", url: format!("{app_url}/.well-known/chatgpt-api.yaml"), is_user_authenticated: false },
         logo_url: "https://i.imgur.com/zBxRq0S.jpg",
